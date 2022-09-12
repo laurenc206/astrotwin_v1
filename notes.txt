@@ -1,0 +1,48 @@
+Deciding whether to do a local or remote database
+
+Deciding if I need a relational or NoSQL database
+
+Putting the logic code into flutter or treating database portion as an "API" essentially creating my own API 
+that connects to the database
+
+Must add permissions to IP address (google 'whats my IP' for public IP)
+
+Using a chart calculator API or configuring my own
+OR using website and stripping data
+MUST INCLUDE SOURCE
+How websites secure against datascraping by not puting parameters in url so you cant mimic requests
+and also assigning a user id (entering into a table and retrieving information from table)
+
+parsing returned string -> when to use ENUM (for my data types ie zodiac) and when just searching the string to set enum
+
+Union find to parse strings
+
+Ideas:
+1. Do search using 5 = top priority first 
+   Narrow search by further filtering 4...
+   Etc until get selection big enough
+
+2. Create people objects with fields sun, moon, etc..
+   OR maps sun -> , moon ->
+   Enum?
+
+
+Astrolog must be installed in C:// file
+
+Organizing chart elements
+each has a percentage
+want to sort based on percentage
+Started with 1. Priority Queue-- Want to be able to sort based on % 
+             2. Map - want a way to determine elements percentage by looking up name
+             3. ArrayList so I can index also creat chart node which contains generic and percentage
+                  and also a map with node -> idx so can find index at constant time
+                  cons -- more memory but all are fixed sizes and not that big
+
+
+Deleting user from db when done? Because ID is assigned by size, by deleting we could end up
+overwriting. Instead create celeb table with celeb info and join with users.
+
+
+Challenges were 
+- authorizing permissions with database 
+- organizing all the data

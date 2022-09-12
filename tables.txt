@@ -1,0 +1,139 @@
+CREATE TABLE People(
+	pid int PRIMARY KEY,
+	username varchar(20) NOT NULL,
+	bday varchar(20) NOT NULL,
+	bplace varchar(100) NOT NULL,
+)
+
+CREATE TABLE PlanetPercentage(
+    plid int PRIMARY KEY,
+    ascendant float, 
+    sun float,
+    moon float, 
+    mercury float, 
+    venus float, 
+    mars float,
+    jupiter float, 
+    saturn float, 
+    uranus float, 
+    neptune float, 
+    pluto float,
+    FOREIGN KEY (plid) REFERENCES People(pid)
+)
+
+CREATE TABLE ZodiacPercentage(
+    zid int PRIMARY KEY,
+    aries float, 
+    taurus float, 
+    gemini float, 
+    cancer float, 
+    leo float, 
+    virgo float,
+    libra float, 
+    scorpio float, 
+    sagittarius float, 
+    capricorn float, 
+    aquarius float, 
+    pisces float,
+    FOREIGN KEY (zid) REFERENCES People(pid)
+)
+
+CREATE TABLE ModePercentage(
+   mid int PRIMARY KEY,
+   cardinal float, 
+   fixed float, 
+   mutable float,
+   FOREIGN KEY (mid) REFERENCES People(pid)
+)
+
+CREATE TABLE ElementPercentage(
+    eid int PRIMARY KEY,
+    fire float, 
+    earth float, 
+    air float, 
+    water float,
+    FOREIGN KEY (eid) REFERENCES People(pid)
+)
+
+CREATE TABLE Chart(
+	id int,
+	planet varchar(20),
+	planetMultiplier float,
+	zodiac varchar(20),
+	element varchar(6),
+	mode varchar(10),
+	house int
+	FOREIGN KEY (id) REFERENCES People(pid)
+)
+
+CREATE TABLE PlanetMultiplier(
+	planet varchar(20) PRIMARY KEY,
+	val float
+)
+
+CREATE TABLE Multipliers(
+	component varchar(20) PRIMARY KEY,
+	val float NOT NULL
+);
+
+
+
+DROP TABLE [dbo].[Chart]
+DROP TABLE [dbo].[ElementPercentage]
+DROP TABLE [dbo].[ModePercentage]
+DROP TABLE [dbo].[PlanetPercentage]
+DROP TABLE [dbo].[ZodiacPercentage]
+DROP TABLE [dbo].[People];
+
+WITH Multiplier AS (SELECT c1.id AS id1, c2.id AS id2, c1.planet AS planet,
+	   					   CASE WHEN c1.zodiac = c2.zodiac THEN 1
+	                            WHEN c1.element = c2.element THEN .5
+			                    WHEN c1.mode = c2.mode THEN .5
+			                    ELSE 0 END AS zodiacMult,
+	                       CASE WHEN c1.house = c2.house THEN 2
+	   		                    ELSE 1 END AS houseMult
+					FROM [dbo].[Chart] AS c1,
+	 					 [dbo].[Chart] AS c2
+					WHERE c1.id = 28 AND c1.id != c2.id AND c1.planet = c2.planet AND
+	  					  (c1.zodiac = c2.zodiac OR c1.element = c2.element OR c1.mode = c2.mode))
+
+SELECT id2, SUM(pm.val * zodiacMult * houseMult) AS total
+FROM Multiplier AS m, [dbo].[PlanetMultiplier] AS pm
+WHERE m.planet = pm.planet
+GROUP BY id2
+ORDER BY total ASC;
+
+
+DELETE FROM [dbo].[Chart]
+DELETE FROM [dbo].[People];
+
+
+
+
+insert into Multiplier    
+
+private boolean insertPlanetValues() {
+        try {
+            for (Planet planet : Planet.values()) {
+                insertMultiplierStatement.clearParameters();
+                insertMultiplierStatement.setString(1, planet.toString());
+                insertMultiplierStatement.setFloat(2, planet.multiplier());
+                insertMultiplierStatement.execute();
+            }
+            conn.commit();
+            return  true;
+        } catch (SQLException e) {
+            if (isDeadLock(e)) {
+                return insertPlanetValues();
+            } else {
+                try {
+                  conn.rollback();
+                } catch (SQLException e1) {
+                  e1.printStackTrace();
+                }
+                return false;
+            }
+        } finally {
+            checkDanglingTransaction();
+        }  
+    }

@@ -1,0 +1,127 @@
+    private static final String INSERT_MODES = "INSERT INTO ModePercentage(mid, cardinal, fixed, mutable) VALUES(?, ?, ?, ?)";
+    private PreparedStatement insertModesStatement;
+    private static final String INSERT_PLANETS = "INSERT INTO PlanetPercentage(plid, ascendant, sun, moon, mercury, venus, mars, jupiter, saturn, uranus, neptune, pluto) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+    private PreparedStatement insertPlanetsStatement;
+    private static final String INSERT_ZODIACS = "INSERT INTO ZodiacPercentage(zid, aries, taurus, gemini, cancer, leo, virgo, libra, scorpio, sagittarius, capricorn, aquarius, pisces) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+    private PreparedStatement insertZodiacsStatement;
+    private static final String INSERT_ELEMENTS = "INSERT INTO ElementPercentage(eid, fire, earth, air, water) VALUES(?, ?, ?, ?, ?)";
+    private PreparedStatement insertElementsStatement;
+
+
+DELETE FROM [dbo].[ZodiacPercentage]
+DELETE FROM [dbo].[PlanetPercentage]
+DELETE FROM [dbo].[ElementPercentage]
+DELETE FROM [dbo].[ModePercentage]
+
+
+    // get match results
+    private static final String GET_DIFFERENCE_TOTALS = "WITH Differences AS (SELECT m2.mid AS id,"  + // WITH Differences AS
+                                                        " ABS(m2.cardinal - m1.cardinal) + ABS(m2.fixed - m1.fixed) + ABS(m2.mutable - m1.mutable) AS modeDiff,"              + // modeDiff
+                                                        " ABS(p2.ascendant - p1.ascendant) + ABS(p2.sun - p1.sun) + ABS(p2.moon - p1.moon) + ABS(p2.mercury - p1.mercury) +"  +
+                                                        " ABS(p2.venus - p1.venus) + ABS(p2.mars - p1.mars) + ABS(p2.jupiter - p1.jupiter) + ABS(p2.saturn - p1.saturn) +"    +
+                                                        " ABS(p2.uranus - p1.uranus) + ABS(p2.neptune - p1.neptune) + ABS(p2.pluto - p1.pluto) AS planetDiff,"                + // planetDiff
+                                                        " ABS(z2.aries - z1.aries) + ABS(z2.taurus - z1.taurus) + ABS(z2.gemini - z1.gemini) + ABS(z2.cancer - z1.cancer) +"  +
+                                                        " ABS(z2.leo - z1.leo) + ABS(z2.virgo - z1.virgo) + ABS(z2.libra - z1.libra) + ABS(z2.scorpio - z1.scorpio) +"        +
+                                                        " ABS(z2.sagittarius - z1.sagittarius) + ABS(z2.capricorn - z1.capricorn) + ABS(z2.aquarius - z1.aquarius) +"         +
+                                                        " ABS(z2.pisces - z1.pisces) AS zodiacDiff,"                                                                          + // zodiacDiff
+                                                        " ABS(e2.fire - e1.fire) + ABS(e2.earth - e1.earth) + ABS(e2.air - e1.air) + ABS(e2.water - e1.water) AS elementDiff" + // elementDiff
+                                                        " FROM [dbo].[ModePercentage] AS m1, [dbo].[ModePercentage] AS m2," + //FROM
+                                                        " [dbo].[PlanetPercentage] AS p1, [dbo].[PlanetPercentage] AS p2,"  +
+                                                        " [dbo].[ZodiacPercentage] AS z1, [dbo].[ZodiacPercentage] AS z2,"  +
+                                                        " [dbo].[ElementPercentage] AS e1, [dbo].[ElementPercentage] AS e2" +
+                                                        " WHERE m1.mid = ? AND m2.mid != m1.mid AND p1.plid = m1.mid AND p2.plid = m2.mid AND"  + // WHERE
+                                                        " z1.zid = m1.mid AND z2.zid = m2.mid AND e1.eid = m1.mid AND e2.eid = m2.mid) " +  // end of WITH 
+                                                        " SELECT Differences.id AS id, Differences.modeDiff AS modeDiff, Differences.planetDiff AS planetDiff,"      + // SELECT subquery Differences
+                                                        " Differences.zodiacDiff AS zodiacDiff, Differences.elementDiff AS elementDiff,"                             +
+                                                        " Differences.modeDiff + Differences.planetDiff + Differences.zodiacDiff + Differences.elementDiff AS total" +
+                                                        " FROM Differences " +  // FROM
+                                                        " ORDER BY total ASC;"; // ORDER BY
+    private PreparedStatement getDiffStatement;
+
+    getDiffStatement = conn.prepareStatement(GET_DIFFERENCE_TOTALS);
+
+
+        public void findMatches(int personID) throws SQLException { // select number of matches?
+        getDiffStatement.clearParameters();
+        getDiffStatement.setInt(1, personID);
+        ResultSet results = getDiffStatement.executeQuery();
+        while(results.next()) {
+            int id = results.getInt("id");
+            double modeDiff = results.getDouble("modeDiff");
+            double planetDiff = results.getDouble("planetDiff");
+            double zodiacDiff = results.getDouble("zodiacDiff");
+            double elementDiff = results.getDouble("elementDiff");
+            double total = results.getDouble("total");
+            System.out.println("id: " + id + "\t modeDiff: " + modeDiff + "\t planetDiff: " + planetDiff + "\t zodiacDiff: " + zodiacDiff + "\t elementDiff: " + elementDiff + "\t total: " + total);
+        }
+        results.close();
+    }
+
+
+
+    private void insertModes(Person p, int id) throws SQLException {
+        insertModesStatement.clearParameters();
+        insertModesStatement.setInt(1, id);
+        int i = 2;
+        for (Mode mode: Mode.values()) {
+            insertModesStatement.setDouble(i, p.chart.percentMap.get(mode));
+            i++;
+        }
+        insertModesStatement.execute();
+    }
+
+    private void insertPlanets(Person p, int id) throws SQLException {
+        insertPlanetsStatement.clearParameters();
+        insertPlanetsStatement.setInt(1, id);
+        int i = 2;
+        for (Planet planet: Planet.values()) {
+            insertPlanetsStatement.setDouble(i, p.chart.percentMap.get(planet));
+            i++;
+        }
+        insertPlanetsStatement.execute();
+    }
+
+    private void insertZodiacs(Person p, int id) throws SQLException {
+        insertZodiacsStatement.clearParameters();
+        insertZodiacsStatement.setInt(1, id);
+        int i = 2;
+        for (Zodiac zodiac: Zodiac.values()) {
+            insertZodiacsStatement.setDouble(i, p.chart.percentMap.get(zodiac));
+            i++;
+        }
+        insertZodiacsStatement.execute();
+    }
+
+    private void insertElements(Person p, int id) throws SQLException {
+        insertElementsStatement.clearParameters();
+        insertElementsStatement.setInt(1, id);
+        int i = 2;
+        for (Element element: Element.values()) {
+            insertElementsStatement.setDouble(i, p.chart.percentMap.get(element));
+            i++;
+        }
+        insertElementsStatement.execute();
+    }
+
+            insertModes(user, id);
+            insertPlanets(user, id);
+            insertZodiacs(user, id);
+            insertElements(user, id);
+    private static final String INSERT_MODES = "INSERT INTO ModePercentage(mid, cardinal, fixed, mutable) VALUES(?, ?, ?, ?)";
+    private PreparedStatement insertModesStatement;
+    private static final String INSERT_PLANETS = "INSERT INTO PlanetPercentage(plid, ascendant, sun, moon, mercury, venus, mars, jupiter, saturn, uranus, neptune, pluto) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+    private PreparedStatement insertPlanetsStatement;
+    private static final String INSERT_ZODIACS = "INSERT INTO ZodiacPercentage(zid, aries, taurus, gemini, cancer, leo, virgo, libra, scorpio, sagittarius, capricorn, aquarius, pisces) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+    private PreparedStatement insertZodiacsStatement;
+    private static final String INSERT_ELEMENTS = "INSERT INTO ElementPercentage(eid, fire, earth, air, water) VALUES(?, ?, ?, ?, ?)";
+    private PreparedStatement insertElementsStatement;
+
+            insertModesStatement = conn.prepareStatement(INSERT_MODES);
+        insertPlanetsStatement = conn.prepareStatement(INSERT_PLANETS);
+        insertZodiacsStatement = conn.prepareStatement(INSERT_ZODIACS);
+        insertElementsStatement = conn.prepareStatement(INSERT_ELEMENTS);
+
+                                                        " DELETE FROM ElementPercentage WHERE eid = ?" +
+                                                " DELETE FROM ModePercentage WHERE mid = ?" +
+                                                " DELETE FROM PlanetPercentage WHERE plid = ?" +
+                                                " DELETE FROM ZodiacPercentage WHERE zid = ?" +
