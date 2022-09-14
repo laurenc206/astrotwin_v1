@@ -92,7 +92,7 @@ public class DataCrawl {
                 e1.printStackTrace();
             }
 
-            if (i > 10) {
+            if (i > 1) {
                 break;
             }
 

@@ -63,10 +63,10 @@ public class DBService {
         response = "Success";
     }
 
-    else if (tokens[0].equals("remove")) {
+    else if (tokens[0].equals("removeUser")) {
       if (tokens.length == 2) {
         int id = Integer.parseInt(tokens[1]);
-        response = q.removePerson(id);  
+        response = q.removeUser(id);  
       } else {
         response = "Format Error: remove <id>";
       }
@@ -174,7 +174,7 @@ public class DBService {
       System.out.println(" *** Please enter one of the following commands *** ");
       System.out.println("> insert <year> <month> <date> <hour> <minute> <town> <country> if town or country are more than 1 word, sepeate words using - ");
       System.out.println("> datacrawl");
-      System.out.println("> remove <id>");
+      System.out.println("> removeUser <id>");
       System.out.println("> getPlanetMultipliers");
       System.out.println("> setPlanetMultipliers <planet> <value>");
       System.out.println("> getChartMultipliers");

@@ -1,10 +1,48 @@
-CREATE TABLE People(
-	pid int PRIMARY KEY,
+CREATE TABLE Celebs(
+    cid int PRIMARY KEY,
+    name varchar(100) UNIQUE NOT NULL,
+    bday varchar(20) NOT NULL,
+    bplace varchar(100) NOT NULL,
+)
+
+CREATE TABLE Celeb_Charts(
+	id int,
+	planet varchar(20),
+	zodiac varchar(20),
+	element varchar(6),
+	mode varchar(10),
+	house int
+	FOREIGN KEY (id) REFERENCES Celebs(cid)
+)
+
+CREATE TABLE Users(
+	uid int PRIMARY KEY,
 	username varchar(20) NOT NULL,
 	bday varchar(20) NOT NULL,
 	bplace varchar(100) NOT NULL,
 )
 
+CREATE TABLE User_Charts(
+	id int,
+	planet varchar(20),
+	zodiac varchar(20),
+	element varchar(6),
+	mode varchar(10),
+	house int
+	FOREIGN KEY (id) REFERENCES Users(uid)
+)
+
+CREATE TABLE PlanetMultiplier(
+	planet varchar(20) PRIMARY KEY,
+	val float
+)
+
+CREATE TABLE Multipliers(
+	component varchar(20) PRIMARY KEY,
+	val float NOT NULL
+)
+
+// Not currently storing chart analysis in db because we end up creating person obj with data anyways
 CREATE TABLE PlanetPercentage(
     plid int PRIMARY KEY,
     ascendant float, 
@@ -53,28 +91,9 @@ CREATE TABLE ElementPercentage(
     air float, 
     water float,
     FOREIGN KEY (eid) REFERENCES People(pid)
-)
-
-CREATE TABLE Chart(
-	id int,
-	planet varchar(20),
-	planetMultiplier float,
-	zodiac varchar(20),
-	element varchar(6),
-	mode varchar(10),
-	house int
-	FOREIGN KEY (id) REFERENCES People(pid)
-)
-
-CREATE TABLE PlanetMultiplier(
-	planet varchar(20) PRIMARY KEY,
-	val float
-)
-
-CREATE TABLE Multipliers(
-	component varchar(20) PRIMARY KEY,
-	val float NOT NULL
 );
+
+
 
 
 

@@ -46,3 +46,21 @@ overwriting. Instead create celeb table with celeb info and join with users.
 Challenges were 
 - authorizing permissions with database 
 - organizing all the data
+
+On mac, azure data studio is needed
+brew install --cask azure-data-studio
+in ordr to allow TCP connections on port 1433
+
+brew install --cask docker
+https://medium.com/@reverentgeek/sql-server-running-on-a-mac-3efafda48861
+
+
+
+Allow all IP addresses (create rule from 0.0.0.0 to 255.255.255.255 to connect)
+
+Must grand permission to execute astrolog.exe by running chmod u+x [system.path]/astrotwin/src/main/java/astrotwin/Astrolog/astrolog.exe
+If mac must download mac version and put into astrolog folder 
+   http://www.astrolog.org/astrolog/astfile.htm
+   Under Ports to additional platforms and languages (Macintosh Version)
+   May need to go into system preferences (see "unidentified developer" in readme.txt)
+   Replace astrolog with mac version

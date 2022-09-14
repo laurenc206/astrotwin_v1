@@ -26,8 +26,11 @@ public class GlobalConst {
 
     public static final List<String> MONTHS = new ArrayList<>(Arrays.asList("january", "february", "march", "april", "may", "june", "july", "august", "september", "october", "november", "december"));
 
-    public static final String ASTROLOG_FPATH = "\\src\\main\\java\\astrotwin\\Astrolog\\astrolog.exe";
-
+    // for windows =
+    // public static final String ASTROLOG_FPATH = "\\src\\main\\java\\astrotwin\\Astrolog\\astrolog.exe";
+    // for mac = 
+    public static final String ASTROLOG_FPATH = "/src/main/java/astrotwin/Astrolog/astrolog";
+    
     public static final String DEFAULT_NAME = "default";
 
     public static final double ZODIAC_MULT = 1;

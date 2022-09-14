@@ -48,7 +48,7 @@
 ** Initial programming 8/28-30/1991.
 ** X Window graphics initially programmed 10/23-29/1991.
 ** PostScript graphics initially programmed 11/29-30/1992.
-** Last code change made 3/31/2022.
+** Last code change made 3/24/2022.
 */
 
 /*
@@ -63,13 +63,13 @@
 ** can be disabled even if you are running a system that supports X windows.
 */
 
-#define PC /* Comment out this #define if you have a Unix, Mac, or other */
+//#define PC /* Comment out this #define if you have a Unix, Mac, or other */
            /* system that isn't a generic PC running DOS or MS Windows.  */
 
-//#define X11 /* Comment out this #define if you don't have X windows, or */
+#define X11 /* Comment out this #define if you don't have X windows, or */
             /* else have them and don't wish to compile in X graphics.  */
 
-#define WIN /* Comment out this #define if you don't have MS Windows, or */
+//#define WIN /* Comment out this #define if you don't have MS Windows, or */
             /* else have them but want a command line version instead.   */
 
 //#define WCLI /* Comment out this #define if you don't want to compile a    */

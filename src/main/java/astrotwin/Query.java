@@ -4,9 +4,6 @@ import java.io.*;
 import java.sql.*;
 import java.util.*;
 
-import com.mysql.cj.x.protobuf.MysqlxPrepare.Prepare;
-import com.mysql.cj.xdevapi.Result;
-
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.time.LocalDateTime;
@@ -14,7 +11,7 @@ import java.time.LocalDateTime;
 public class Query {
     // Database Connection
     private Connection conn;
-    int userID;
+    int userID = 0;
     boolean insertedUser = false;
     Person user;
     
@@ -27,24 +24,33 @@ public class Query {
 
     // Canned queries
     // insert user
-    private static final String INSERT_PERSON = "INSERT INTO People(pid, username, bday, bplace) VALUES(?, ?, ?, ?)";
-    private PreparedStatement insertPersonStatement;
-    private static final String REMOVE_PERSON = " DELETE FROM Chart WHERE id = ?" +
-                                                " DELETE FROM People WHERE pid = ?;";
-    private PreparedStatement removePersonStatement;
+    private static final String INSERT_USER = "INSERT INTO Users(uid, username, bday, bplace) VALUES(?, ?, ?, ?)";
+    private PreparedStatement insertUserStatement;
+    private static final String REMOVE_USER = " DELETE FROM User_Charts WHERE id = ?" +
+                                                " DELETE FROM Users WHERE uid = ?;";
+    private PreparedStatement removeUserStatement;
 
-    private static final String LARGEST_UNIQUE_ID = "SELECT MAX(pid) AS maxid FROM People;";
-    private PreparedStatement largestUniqueIDStatement;
+    private static final String INSERT_CELEB = "INSERT INTO Celebs(cid, name, bday, bplace) VALUES(?, ?, ?, ?)";
+    private PreparedStatement insertCelebStatement;
+
+    private static final String MAX_CELEB_ID = "SELECT MAX(cid) AS maxid FROM Celebs;";
+    private PreparedStatement maxCelebIDStatement;
+
+    private static final String MAX_USER_ID = "SELECT MAX(uid) AS maxid FROM Users;";
+    private PreparedStatement maxUserIDStatement;
   
-    private static final String INSERT_CHART = "INSERT INTO Chart(id, planet, zodiac, element, mode, house) VAlUES (?, ?, ?, ?, ?, ?)";
-    private PreparedStatement insertChartStatement;
-    
+    private static final String INSERT_CELEB_CHART = "INSERT INTO Celeb_Charts(id, planet, zodiac, element, mode, house) VAlUES (?, ?, ?, ?, ?, ?)";
+    private PreparedStatement insertCelebChartStatement;
+
+    private static final String INSERT_USER_CHART = "INSERT INTO User_Charts(id, planet, zodiac, element, mode, house) VAlUES (?, ?, ?, ?, ?, ?)";
+    private PreparedStatement insertUserChartStatement;
+ 
     private static final String CALC_MATCHES = "WITH Multiplier AS (SELECT c1.id AS id1, c2.id AS id2, c1.planet AS planet," +
                                                " CASE WHEN c1.zodiac = c2.zodiac THEN " + zodiacMult +
                                                " WHEN c1.element = c2.element THEN "+ elementMult +
                                                " WHEN c1.mode = c2.mode THEN " + modeMult + " ELSE 0 END AS zodiacMult," +
                                                " CASE WHEN c1.house = c2.house THEN "+ houseMult + " ELSE 1 END AS houseMult" +
-                                               " FROM [dbo].[Chart] AS c1, [dbo].[Chart] AS c2" +
+                                               " FROM [dbo].[User_Charts] AS c1, [dbo].[Celeb_Charts] AS c2" +
                                                " WHERE c1.id = ? AND c1.planet = c2.planet AND (c1.zodiac = c2.zodiac OR c1.element = c2.element OR c1.mode = c2.mode))" +
                                                " SELECT id2, SUM(pm.val * zodiacMult * houseMult) AS total" +
                                                " FROM Multiplier AS m, [dbo].[PlanetMultiplier] AS pm" +
@@ -58,8 +64,8 @@ public class Query {
     private static final String SET_PLANET_MULT = "UPDATE [dbo].[PlanetMultiplier] SET val = ? WHERE planet = ?;";
     private PreparedStatement setPlanetMultStatement;
 
-    private static final String GET_PERSON = "SELECT * FROM [dbo].[People] WHERE pid = ?;";
-    private PreparedStatement getPersonStatement;
+    private static final String GET_CELEB = "SELECT * FROM [dbo].[Celebs] WHERE cid = ?;";
+    private PreparedStatement getCelebStatement;
     // For check dangling
     private static final String TRANCOUNT_SQL = "SELECT @@TRANCOUNT AS tran_count";
     private PreparedStatement tranCountStatement;
@@ -78,7 +84,6 @@ public class Query {
             : openConnectionFromCredential(serverURL, dbName, adminName, password);
 
         prepareStatements();
-        userID = getUniqueID();
         initializePlanetMultipliers();
     }
 
@@ -96,7 +101,11 @@ public class Query {
         String dbName = configProps.getProperty("app.database_name");
         String adminName = configProps.getProperty("app.username");
         String password = configProps.getProperty("app.password");
+        System.out.println("url: " + serverURL + " dbName: " + dbName + " adminName: " + adminName + " password: " + password);
+        System.out.println();
+
         return openConnectionFromCredential(serverURL, dbName, adminName, password);
+
     }
 
     /**
@@ -113,8 +122,11 @@ public class Query {
     protected static Connection openConnectionFromCredential(String serverURL, String dbName,
                                                              String adminName, String password) throws SQLException {
         String connectionUrl =
-            String.format("jdbc:sqlserver://%s:1433;databaseName=%s;user=%s;password=%s", serverURL,
+            String.format("jdbc:sqlserver://%s:1433;databaseName=%s;user=%s;password=%s;encrypt=true;trustServerCertificate=false;hostNameInCertificate=*.database.windows.net;loginTimeout=30", serverURL,
                 dbName, adminName, password);
+        System.out.println(connectionUrl);
+        
+        //String connectionUrl = "jdbc:sqlserver://celeb-astro.database.windows.net:1433;database=celeb_astro;user=LaurenC;password={Haley923};encrypt=true;trustServerCertificate=false;hostNameInCertificate=*.database.windows.net;loginTimeout=30;";
         Connection conn = DriverManager.getConnection(connectionUrl);
 
         // By default, automatically commit after each statement
@@ -138,7 +150,7 @@ public class Query {
      */
     public void closeConnection() throws SQLException {
         if (insertedUser) {
-            removePerson(userID);
+            removeUser(userID);
         }
         
         conn.close();
@@ -149,15 +161,17 @@ public class Query {
      */
     private void prepareStatements() throws SQLException {
         tranCountStatement = conn.prepareStatement(TRANCOUNT_SQL);
-        insertPersonStatement = conn.prepareStatement(INSERT_PERSON);
-        removePersonStatement = conn.prepareStatement(REMOVE_PERSON);
-        largestUniqueIDStatement = conn.prepareStatement(LARGEST_UNIQUE_ID);
-        insertChartStatement = conn.prepareStatement(INSERT_CHART);
-
+        insertUserStatement = conn.prepareStatement(INSERT_USER);
+        removeUserStatement = conn.prepareStatement(REMOVE_USER);
+        insertCelebStatement = conn.prepareStatement(INSERT_CELEB);
+        maxCelebIDStatement = conn.prepareStatement(MAX_CELEB_ID);
+        maxUserIDStatement = conn.prepareStatement(MAX_USER_ID);
+        insertUserChartStatement = conn.prepareStatement(INSERT_USER_CHART);
+        insertCelebChartStatement = conn.prepareStatement(INSERT_CELEB_CHART);
         calcMatchesStatement = conn.prepareStatement(CALC_MATCHES);
         getPlanetMultStatement = conn.prepareStatement(GET_PLANET_MULT);
         setPlanetMultStatement = conn.prepareStatement(SET_PLANET_MULT);
-        getPersonStatement = conn.prepareStatement(GET_PERSON);
+        getCelebStatement = conn.prepareStatement(GET_CELEB);
     }
 
     private void initializePlanetMultipliers() {
@@ -176,20 +190,20 @@ public class Query {
     public String insertUser(Person user) {  
         int id;
         try {
-            id = getUniqueID();
-            insertPersonStatement.clearParameters();
-            insertPersonStatement.setInt(1, id);// get size of user table
-            insertPersonStatement.setString(2, user.name);
-            insertPersonStatement.setString(3, user.getBirthday());
-            insertPersonStatement.setString(4, user.getBirthLocation());
-            insertPersonStatement.execute();
+            id = getUniqueUserID();
+            insertUserStatement.clearParameters();
+            insertUserStatement.setInt(1, id);// get size of user table
+            insertUserStatement.setString(2, user.name);
+            insertUserStatement.setString(3, user.getBirthday());
+            insertUserStatement.setString(4, user.getBirthLocation());
+            insertUserStatement.execute();
 
-            insertChart(user, id);
+            insertUserChart(user, id);
 
             conn.commit();
             if (insertedUser) {
                 // a user has been previously inserted so we remove that first so we're only searching celebs
-                removePerson(userID);
+                removeUser(userID);
             } else {
                 insertedUser = true;
             }
@@ -216,19 +230,19 @@ public class Query {
     public String insertCeleb(Person celeb) {
         int id;
         try {
-            id = getUniqueID();
-            insertPersonStatement.clearParameters();
-            insertPersonStatement.setInt(1, id);// get size of user table
-            insertPersonStatement.setString(2, celeb.name);
-            insertPersonStatement.setString(3, celeb.getBirthday());
-            insertPersonStatement.setString(4, celeb.getBirthLocation());
-            insertPersonStatement.execute();
-            insertChart(celeb, id);
+            id = getUniqueCelebID();
+            insertCelebStatement.clearParameters();
+            insertCelebStatement.setInt(1, id);// get size of user table
+            insertCelebStatement.setString(2, celeb.name);
+            insertCelebStatement.setString(3, celeb.getBirthday());
+            insertCelebStatement.setString(4, celeb.getBirthLocation());
+            insertCelebStatement.execute();
+            insertCelebChart(celeb, id);
             conn.commit();
             return "Created celeb " + celeb.name + " with id: " + id + "\n";
         } catch (SQLException e) {
             if (isDeadLock(e)) {
-                return insertUser(celeb);
+                return insertCeleb(celeb);
             } else {
                 try {
                   conn.rollback();
@@ -243,25 +257,50 @@ public class Query {
         }
     }
 
-    private void insertChart(Person p, int id) throws SQLException {
+    private void insertCelebChart(Person p, int id) throws SQLException {
         for (Planet planet : Planet.values()) {
             Zodiac sign = p.chart.signMap.get(planet);
             int house = p.chart.houseMap.get(planet);
-            insertChartStatement.clearParameters();
-            insertChartStatement.setInt(1, id);
-            insertChartStatement.setString(2, planet.toString());
-            insertChartStatement.setString(3, sign.toString());
-            insertChartStatement.setString(4, sign.getElement());
-            insertChartStatement.setString(5, sign.getMode());
-            insertChartStatement.setInt(6, house);
+            insertCelebChartStatement.clearParameters();
+            insertCelebChartStatement.setInt(1, id);
+            insertCelebChartStatement.setString(2, planet.toString());
+            insertCelebChartStatement.setString(3, sign.toString());
+            insertCelebChartStatement.setString(4, sign.getElement());
+            insertCelebChartStatement.setString(5, sign.getMode());
+            insertCelebChartStatement.setInt(6, house);
 
-            insertChartStatement.execute();
+            insertCelebChartStatement.execute();
         }
     }
 
-    private int getUniqueID() throws SQLException {
-        largestUniqueIDStatement.clearParameters();
-        ResultSet results = largestUniqueIDStatement.executeQuery();
+    private void insertUserChart(Person p, int id) throws SQLException {
+        for (Planet planet : Planet.values()) {
+            Zodiac sign = p.chart.signMap.get(planet);
+            int house = p.chart.houseMap.get(planet);
+            insertUserChartStatement.clearParameters();
+            insertUserChartStatement.setInt(1, id);
+            insertUserChartStatement.setString(2, planet.toString());
+            insertUserChartStatement.setString(3, sign.toString());
+            insertUserChartStatement.setString(4, sign.getElement());
+            insertUserChartStatement.setString(5, sign.getMode());
+            insertUserChartStatement.setInt(6, house);
+
+            insertUserChartStatement.execute();
+        }
+    }
+
+    private int getUniqueCelebID() throws SQLException {
+        maxCelebIDStatement.clearParameters();
+        ResultSet results = maxCelebIDStatement.executeQuery();
+        results.next();
+        int maxid = results.getInt("maxid");
+        results.close();
+        return maxid + 1;
+    }
+
+    private int getUniqueUserID() throws SQLException {
+        maxUserIDStatement.clearParameters();
+        ResultSet results = maxUserIDStatement.executeQuery();
         results.next();
         int maxid = results.getInt("maxid");
         results.close();
@@ -277,16 +316,11 @@ public class Query {
         calcMatchesStatement.clearParameters();
         calcMatchesStatement.setInt(1, userID);
         ResultSet results = calcMatchesStatement.executeQuery();
-        double total = 1;
+
         while(results.next()) {
             int id = results.getInt("id2");
-            if (id == this.userID) {
-                total = results.getDouble("total");
-            } else {
-                double sum = results.getDouble("total");
-                double percent = (sum / total) * 100;
-                sb.append("id: " + id + "\t sum: " + sum + "\t percent match: " + percent + "%\n");
-            }
+            double sum = results.getDouble("total");
+            sb.append("id: " + id + "\t sum: " + sum + "\t percent match: \n");  
         }
         results.close();
         return sb.toString();
@@ -305,9 +339,9 @@ public class Query {
 
     private Person getCeleb(int celebID) throws SQLException, InterruptedException, IOException {
         Person celeb = null;
-        getPersonStatement.clearParameters();
-        getPersonStatement.setInt(1, celebID);
-        ResultSet results = getPersonStatement.executeQuery();
+        getCelebStatement.clearParameters();
+        getCelebStatement.setInt(1, celebID);
+        ResultSet results = getCelebStatement.executeQuery();
         while(results.next() && celeb == null) {
             String bdayStr = results.getString("bday");
             String bplaceStr = results.getString("bplace");
@@ -336,21 +370,21 @@ public class Query {
         return celeb;
     }
 
-    public String removePerson(int personID) {
+    public String removeUser(int personID) {
         try {
-            removePersonStatement.clearParameters();
-            removePersonStatement.setInt(1, personID);
-            removePersonStatement.setInt(2, personID);
-            removePersonStatement.setInt(3, personID);
-            removePersonStatement.setInt(4, personID);
-            removePersonStatement.setInt(5, personID);
-            removePersonStatement.setInt(6, personID);
-            removePersonStatement.execute();
+            removeUserStatement.clearParameters();
+            removeUserStatement.setInt(1, personID);
+            removeUserStatement.setInt(2, personID);
+            removeUserStatement.setInt(3, personID);
+            removeUserStatement.setInt(4, personID);
+            removeUserStatement.setInt(5, personID);
+            removeUserStatement.setInt(6, personID);
+            removeUserStatement.execute();
             conn.commit();
             return "Successfully removed user " + String.valueOf(personID);  
         } catch (SQLException e) {
             if (isDeadLock(e)) {
-                return removePerson(personID);
+                return removeUser(personID);
             } else {
                 try {
                   conn.rollback();
