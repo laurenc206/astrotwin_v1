@@ -30,7 +30,9 @@ public class AtlasModel {
                 
             String location = tokens[0].replaceAll("^\\s+[\\d]+:\\s", "");
             String[] locTokens = location.split(",", 2);
-
+            for (String s : locTokens) {
+                System.out.println(s);
+            }
             if (locTokens.length == 2) {
                 if (locTokens[0].equalsIgnoreCase(town) && (locTokens[1].contains(placeIdentifyStr)) && tokens.length > 1) {                              
                     String removePunct = tokens[1].replace(",", "");
@@ -45,15 +47,16 @@ public class AtlasModel {
                         System.out.println(tokens[1]);
                         throw new IllegalStateException();
                     }
-                } else {
+                } else if (i == lines.length - 1) {
                     System.out.println("No cities match " + town + ", " + country + " (" + placeIdentifyStr + ")");
                     System.out.println("Results: ");
                     System.out.print(output);
                     throw new IllegalStateException();
-                }
-                
+                } else {
+                    continue;
+                }         
             } else {
-                System.out.println("Results in wrong format- cant be split using , between town, (state), country (<lat> <long>, <timezone>)");
+                System.out.println("Results in wrong format- cant be split using \",\" between town, (state), country (<lat> <long>, <timezone>)");
                 System.out.println("Results: ");
                 System.out.print(output);
                 throw new IllegalStateException();

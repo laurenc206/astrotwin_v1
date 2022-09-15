@@ -21,7 +21,6 @@ public class Query {
     private static Double modeMult = GlobalConst.MODE_MULT;
     private static Double houseMult = GlobalConst.HOUSE_MULT;
 
-
     // Canned queries
     // insert user
     private static final String INSERT_USER = "INSERT INTO Users(uid, username, bday, bplace) VALUES(?, ?, ?, ?)";
@@ -46,16 +45,20 @@ public class Query {
     private PreparedStatement insertUserChartStatement;
  
     private static final String CALC_MATCHES = "WITH Multiplier AS (SELECT c1.id AS id1, c2.id AS id2, c1.planet AS planet," +
-                                               " CASE WHEN c1.zodiac = c2.zodiac THEN " + zodiacMult +
-                                               " WHEN c1.element = c2.element THEN "+ elementMult +
-                                               " WHEN c1.mode = c2.mode THEN " + modeMult + " ELSE 0 END AS zodiacMult," +
-                                               " CASE WHEN c1.house = c2.house THEN "+ houseMult + " ELSE 1 END AS houseMult" +
+                                               //" CASE WHEN c1.zodiac = c2.zodiac THEN " + zodiacMult +
+                                               //" WHEN c1.element = c2.element THEN "+ elementMult +
+                                               //" WHEN c1.mode = c2.mode THEN " + modeMult + " ELSE 0 END AS zodiacMult," +
+                                               //" CASE WHEN c1.house = c2.house THEN "+ houseMult + " ELSE 1 END AS houseMult" +
+                                               " CASE WHEN c1.zodiac = c2.zodiac THEN ? " + 
+                                               " WHEN c1.element = c2.element THEN ? "+ 
+                                               " WHEN c1.mode = c2.mode THEN ? ELSE 0 END AS zodiacMult," +
+                                               " CASE WHEN c1.house = c2.house THEN ? ELSE 1 END AS houseMult" +
                                                " FROM [dbo].[User_Charts] AS c1, [dbo].[Celeb_Charts] AS c2" +
                                                " WHERE c1.id = ? AND c1.planet = c2.planet AND (c1.zodiac = c2.zodiac OR c1.element = c2.element OR c1.mode = c2.mode))" +
-                                               " SELECT id2, SUM(pm.val * zodiacMult * houseMult) AS total" +
-                                               " FROM Multiplier AS m, [dbo].[PlanetMultiplier] AS pm" +
-                                               " WHERE m.planet = pm.planet" +
-                                               " GROUP BY id2" +
+                                               " SELECT id2, celebDB.name AS name, SUM(pm.val * zodiacMult * houseMult) AS total" +
+                                               " FROM Multiplier AS m, [dbo].[PlanetMultiplier] AS pm, [dbo].[Celebs] AS celebDB" +
+                                               " WHERE m.planet = pm.planet AND id2 = celebDB.cid" +
+                                               " GROUP BY id2, celebDB.name" +
                                                " ORDER BY total DESC;";
     private PreparedStatement calcMatchesStatement;
 
@@ -314,13 +317,18 @@ public class Query {
         
         StringBuilder sb = new StringBuilder("");
         calcMatchesStatement.clearParameters();
-        calcMatchesStatement.setInt(1, userID);
+        calcMatchesStatement.setDouble(1, zodiacMult);
+        calcMatchesStatement.setDouble(2, elementMult);
+        calcMatchesStatement.setDouble(3, modeMult);
+        calcMatchesStatement.setDouble(4, houseMult);
+        calcMatchesStatement.setInt(5, userID);
         ResultSet results = calcMatchesStatement.executeQuery();
 
         while(results.next()) {
             int id = results.getInt("id2");
             double sum = results.getDouble("total");
-            sb.append("id: " + id + "\t sum: " + sum + "\t percent match: \n");  
+            String name = results.getString("name");
+            sb.append("id: " + id + "\t name: " + name + "\t sum: " + sum + "\t percent match: \n");  
         }
         results.close();
         return sb.toString();
