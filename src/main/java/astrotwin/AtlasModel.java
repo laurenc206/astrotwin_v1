@@ -12,7 +12,8 @@ public class AtlasModel {
 
     // Takes astrolog output when chart calls getLocation and 
     // parses output to create location model used for chart calculations
-    public AtlasModel(String town, String country, int year) throws IOException, InterruptedException {
+    public AtlasModel(String town, String country, int year) throws InterruptedException, IOException, IllegalStateException {
+        Boolean locationFound = false;
         this.town = town;
         this.country = country;
         String placeIdentifyStr;
@@ -21,46 +22,55 @@ public class AtlasModel {
         } else {
             placeIdentifyStr = country;
         }
+        System.out.println("Location searching: " + town + ", " + country);
 
         String output = getLocationData(GlobalConst.DEFAULT_NAME, town, year);
         String[] lines = output.split("\n");
             
-        for (int i = 1; i < lines.length; i++) { // first line is just a header and not part of results
-            String[] tokens = lines[i].split("[(|)]");
+        for (int i = 1; i < lines.length; i++) { // first line is just a header and not part of results         
+            String line = lines[i].replaceAll("^\\s+[\\d]+:\\s", "");          
+            String[] tokens = line.split(",", 2);
+            if (tokens.length != 2) {
+                System.out.println("Results Format Error: Cant split using \",\" between town and (state), country (lat long, timezone)");
+                System.out.println("Line is: " + lines[i]);
+                throw new IOException();
+            }
+
+            String townStr = tokens[0];
+            String remaining = tokens[1];
+            String[] remainingTokens = remaining.split("[(|)]", 2);
+            if (remainingTokens.length != 2) {
+                System.out.println("Results format error: Can't split between country and (lat, long, timezone)");
+                System.out.println("Line is: " + lines[i]);
+                throw new IOException();
+            }
+
+            String countryStr = remainingTokens[0];
+            if (townStr.equalsIgnoreCase(town) && (countryStr.contains(placeIdentifyStr))) {
                 
-            String location = tokens[0].replaceAll("^\\s+[\\d]+:\\s", "");
-            String[] locTokens = location.split(",", 2);
-            for (String s : locTokens) {
-                System.out.println(s);
-            }
-            if (locTokens.length == 2) {
-                if (locTokens[0].equalsIgnoreCase(town) && (locTokens[1].contains(placeIdentifyStr)) && tokens.length > 1) {                              
-                    String removePunct = tokens[1].replace(",", "");
-                    String[] polarTokens = removePunct.split("\\s+");
-                    if (polarTokens.length == 3) {
-                        this.longitude = polarTokens[0];
-                        this.latitude = polarTokens[1];
-                        this.zone = polarTokens[2];
-                        break;
-                    } else {
-                        System.out.println("Polar Format Error: Should have (<lat> <long>, <timezone>)");
-                        System.out.println(tokens[1]);
-                        throw new IllegalStateException();
-                    }
-                } else if (i == lines.length - 1) {
-                    System.out.println("No cities match " + town + ", " + country + " (" + placeIdentifyStr + ")");
-                    System.out.println("Results: ");
-                    System.out.print(output);
-                    throw new IllegalStateException();
+                // this line is a match so extract polar coordinates and time zone     
+                String polarStr = remainingTokens[1].replace(")", "");               
+                String removePunct = polarStr.replace(",", "");
+                String[] polarTokens = removePunct.split("\\s+");
+                if (polarTokens.length != 3) {
+                    System.out.println("Polar Format Error: Should have (lat long, timezone)");
+                    System.out.println(polarStr);
+                    throw new IOException();
                 } else {
-                    continue;
-                }         
-            } else {
-                System.out.println("Results in wrong format- cant be split using \",\" between town, (state), country (<lat> <long>, <timezone>)");
-                System.out.println("Results: ");
-                System.out.print(output);
-                throw new IllegalStateException();
+                    this.longitude = polarTokens[0];
+                    this.latitude = polarTokens[1];
+                    this.zone = polarTokens[2];
+                    System.out.println("Location selected: " + line);
+                    locationFound = true;
+                    break;
+                }
             }
+        }
+
+        if (!locationFound) {
+            System.out.println("No cities match " + town + ", " + country + " (" + placeIdentifyStr + ")");
+            System.out.print(output);
+            throw new IllegalStateException();
         }
     }
 

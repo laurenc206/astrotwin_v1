@@ -4,6 +4,7 @@ import java.util.*;
 
 
 public class GlobalConst {
+    public static final int CURRENT_YEAR = 2022;
     public static final boolean USE_NETWORK = true;
     public static final String CHART_URL = "https://alabe.com/cgi-bin/chart/astrobot.cgi?INPUT1=&INPUT2=&GENDER=%s&MONTH=%s&DAY=%s&YEAR=%s&HOUR=%s&MINUTE=%s&AMPM=%s&TOWN=%s&COUNTRY=%s&STATE=%s&INPUT9=&Submit=Submit";
 
@@ -37,6 +38,8 @@ public class GlobalConst {
     public static final double ELEMENT_MULT = .5;
     public static final double MODE_MULT = .5;
     public static final double HOUSE_MULT = 2;
+    
+    public static final int PROMPT_LEN = 25;
 
     private GlobalConst() {
         throw new IllegalStateException("GlobalConstant class");

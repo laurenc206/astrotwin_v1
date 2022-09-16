@@ -23,29 +23,15 @@ public class DBService {
     }
         
     // insert user and their chart into tables
-    else if (tokens[0].equals("insert")) {
-      if (tokens.length == 8) {
-        int year = Integer.parseInt(tokens[1]);
-        Month month = Month.of(Integer.parseInt(tokens[2]));
-        int day = Integer.parseInt(tokens[3]);
-        int hour = Integer.parseInt(tokens[4]);
-        int minute = Integer.parseInt(tokens[5]);
-
-        String town = tokens[6].replace("-", " ");
-        String country = tokens[7].replace("-", " ");
-        
-        LocalDateTime bday = LocalDateTime.of(year, month, day, hour, minute);
-        System.out.println(bday.toString());
-        try {
-          Person user = new Person("user", bday, town, country);
-          response = q.insertUser(user);
-        } catch (IOException | InterruptedException e) {
-          e.printStackTrace();
-          response = "Error creating person object";
-        }      
-      } else {
-        response = "Error: Please provide birthday and birthtime";
-      }
+    else if (tokens[0].equals("createChart")) {
+      try {
+        System.out.println("Enter birth day and location to calculate chart: ");
+        Person user = getBirthInput(GlobalConst.DEFAULT_NAME);
+        response = q.insertUser(user);
+      } catch (IOException | InterruptedException e) {
+        e.printStackTrace();
+        response = "Error creating person object";
+      }      
     }
 
       // datacrawl
@@ -172,7 +158,7 @@ public class DBService {
       // print the command options
       System.out.println();
       System.out.println(" *** Please enter one of the following commands *** ");
-      System.out.println("> insert <year> <month> <date> <hour> <minute> <town> <country> if town or country are more than 1 word, sepeate words using - ");
+      System.out.println("> createChart");
       System.out.println("> datacrawl");
       System.out.println("> removeUser <id>");
       System.out.println("> getPlanetMultipliers");
@@ -194,6 +180,231 @@ public class DBService {
       if (response.equals("Goodbye\n")) {
         break;
       }
+    }
+  }
+
+  private static Person getBirthInput(String name) throws InterruptedException, IOException {
+    LocalDateTime bday = getBdayDateTime();
+    AtlasModel location = getBdayLocation();
+
+    if (location == null) {
+      System.out.println("Unable to complete location look-up");
+      return null;
+    } else {
+      return new Person(name, bday, location);
+    }
+  }
+
+  private static LocalDateTime getBdayDateTime() {
+    BufferedReader r = new BufferedReader(new InputStreamReader(System.in));
+    LocalDateTime result = LocalDateTime.MIN;
+    StringBuilder prompt = new StringBuilder("");
+    
+    while (result.equals(LocalDateTime.MIN)) {
+      int year; 
+      int month;
+      int date;
+      int hour;
+      int minute;
+      // Year Input
+      prompt.append("\t> Year: ");
+      int promptLen = prompt.length();
+      prompt.append(" ".repeat(GlobalConst.PROMPT_LEN - promptLen));
+      while (true) {
+        System.out.print(prompt); 
+        String yearStr;
+        try {
+          yearStr = r.readLine();
+          if (Integer.valueOf(yearStr) > 0 && Integer.valueOf(yearStr) <= GlobalConst.CURRENT_YEAR) {
+            year = Integer.valueOf(yearStr);
+            break;
+          } else {
+            System.out.println("\tEnter a valid year between 0 and " + GlobalConst.CURRENT_YEAR);
+          }
+        } catch (IOException e) {
+          System.out.print("I/O error occured. Try again");
+        }
+      }
+
+      // Month Input
+      prompt.delete(0, prompt.length());
+      prompt.append("\t> Month: ");
+      promptLen = prompt.length();
+      prompt.append(" ".repeat(GlobalConst.PROMPT_LEN - promptLen));
+      while (true) {
+        System.out.print(prompt); 
+        String monthStr;
+        try {
+          monthStr = r.readLine();
+          if (Integer.valueOf(monthStr) > 0 && Integer.valueOf(monthStr) <= 12) {
+            month = Integer.valueOf(monthStr);
+            break;
+          } else {
+            System.out.println("\tEnter a valid month between 1 and 12");
+          }
+        } catch (IOException e) {
+          System.out.print("I/O error occured. Try again");
+        }
+      }
+
+      // Date Input
+      prompt.delete(0, prompt.length());
+      prompt.append("\t> Date: ");
+      promptLen = prompt.length();
+      prompt.append(" ".repeat(GlobalConst.PROMPT_LEN - promptLen));
+      while (true) {
+        System.out.print(prompt); 
+        String dateStr;
+        try {
+          dateStr = r.readLine();
+          int daysInMonth = getMaxDays(month, year);
+          if (Integer.valueOf(dateStr) > 0 && Integer.valueOf(dateStr) <= daysInMonth) {
+            date = Integer.valueOf(dateStr);
+            break;
+          } else {
+            System.out.println("\tEnter a valid date between 1 and " + daysInMonth + " for month " + month);
+          }
+        } catch (IOException e) {
+          System.out.print("I/O error occured. Try again");
+        }
+      }
+
+      // Hour Input
+      prompt.delete(0, prompt.length());
+      prompt.append("\t> Hour (between 0-23): ");
+      promptLen = prompt.length();
+      prompt.append(" ".repeat(GlobalConst.PROMPT_LEN - promptLen));
+      while (true) {
+        System.out.print(prompt);
+        String hourStr;
+        try {
+          hourStr = r.readLine();
+          if (Integer.valueOf(hourStr) >= 0 && Integer.valueOf(hourStr) <= 23) {
+            hour = Integer.valueOf(hourStr);
+            break;
+          } else {
+            System.out.println("\tEnter a valid hour between 0 and 23");
+          }
+        } catch (IOException e) {
+          System.out.print("I/O error occured. Try again");
+        }
+      }
+
+      // Minute Input
+      prompt.delete(0, prompt.length());
+      prompt.append("\t> Minute: ");
+      promptLen = prompt.length();
+      prompt.append(" ".repeat(GlobalConst.PROMPT_LEN - promptLen));
+      while (true) { 
+        System.out.print(prompt);
+        String minuteStr;
+        try {
+          minuteStr = r.readLine();
+          if (Integer.valueOf(minuteStr) >= 0 && Integer.valueOf(minuteStr) <= 59) {
+            minute = Integer.valueOf(minuteStr);
+            break;
+          } else {
+            System.out.println("\tEnter a valid minute between 0 and 59");
+          }    
+        } catch (IOException e) {
+          System.out.print("I/O error occured. Try again");
+        }
+      }
+      result = LocalDateTime.of(year, month, date, hour, minute);
+    }
+
+    return result;
+  }
+
+  private static AtlasModel getBdayLocation() {
+    BufferedReader r = new BufferedReader(new InputStreamReader(System.in));
+    String town;
+    String country;
+    String locationSpecifier;
+    AtlasModel result = null;
+    StringBuffer prompt = new StringBuffer("");
+
+    prompt.append("\t> Town: ");
+    int promptLen = prompt.length();
+    prompt.append(" ".repeat(GlobalConst.PROMPT_LEN - promptLen));
+    while (true) {
+      System.out.print(prompt);
+      try {
+        town = r.readLine();
+        break;
+      } catch (IOException e1) {
+        System.out.println("I/O error try again");
+      }
+    }
+
+    prompt.delete(0, prompt.length());
+    prompt.append("\t> Country: ");
+    promptLen = prompt.length();
+    prompt.append(" ".repeat(GlobalConst.PROMPT_LEN - promptLen));
+    while (true) {
+      System.out.print(prompt);
+      try {
+        country = r.readLine();
+        break;
+      } catch (IOException e) {
+        System.out.println("I/O error try again");
+      }
+    }
+  
+    if (country.equalsIgnoreCase("USA") || 
+      country.equalsIgnoreCase("United States") || 
+      country.equalsIgnoreCase("United States of America") ||
+      country.equalsIgnoreCase("America") ||
+      country.equalsIgnoreCase("Canada") ||
+      country.equalsIgnoreCase("CA")) {
+        
+        prompt.delete(0, prompt.length());
+        prompt.append("\t> State/Provence: ");
+        promptLen = prompt.length();
+        prompt.append(" ".repeat(GlobalConst.PROMPT_LEN - promptLen));
+        while (true) {
+          System.out.print(prompt);
+          try {
+            locationSpecifier = r.readLine();
+            break;
+          } catch (IOException e) {
+            System.out.println("I/O error try again");
+          }
+        }
+    } else {
+        locationSpecifier = country;
+    }
+
+    try {
+      result = new AtlasModel(town, locationSpecifier, GlobalConst.CURRENT_YEAR);
+    } catch (IOException e) {
+      System.out.println();
+      System.out.println("I/O error occured. Retry location look-up");
+      result = getBdayLocation();
+    } catch (InterruptedException e) {
+      System.out.println();
+      System.out.println("Error occurred. Retry location look-up");
+      result = getBdayLocation();
+    } catch (IllegalStateException e) {
+      System.out.println();
+      System.out.println("Retry location look-up");
+      result = getBdayLocation();
+    }
+
+    return result;
+  }
+
+  private static int getMaxDays(int month, int year) {
+    if (month == 2) {
+      if (year % 4 == 0) {
+        return 29;
+      } else {
+        return 28;
+      }
+    } else if (month == 1 || month == 3 || month == 5 || month == 7 || month == 8 || month == 10 || month == 12) {
+      return 31;
+    } else {
+      return 30;
     }
   }
 
