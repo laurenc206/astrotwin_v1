@@ -86,11 +86,11 @@ enum Planet implements SignComponent{
     JUPITER("Jupiter", .5), SATURN("Saturn", .5), URANUS("Uranus", .5), 
     NEPTUNE("Neptune", .25), PLUTO("Pluto", .25);
     private String planetName;
-    private Float multiplier;
+    private final Float defaultMultiplier;
 
     private Planet(String planet, Double multiplier) {
         this.planetName = planet;
-        this.multiplier = Float.valueOf(String.valueOf(multiplier));
+        this.defaultMultiplier = Float.valueOf(String.valueOf(multiplier));
     }
 
     @Override
@@ -103,11 +103,6 @@ enum Planet implements SignComponent{
     }
 
     public Float getMult() {
-        return multiplier;
+        return defaultMultiplier;
     }
-
-    public void setMult(Float multiplier) {
-        this.multiplier = multiplier;
-    }
-
  }

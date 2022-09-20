@@ -11,15 +11,16 @@ import java.time.LocalDateTime;
 public class Query {
     // Database Connection
     private Connection conn;
-    int userID = 0;
-    boolean insertedUser = false;
-    Person user;
+    static double totalPoints = 1;
+    Map<Integer, Person> usersCreated;
+    int sessionID;
     
     // multipliers we can change
     private static Double zodiacMult = GlobalConst.ZODIAC_MULT;
     private static Double elementMult = GlobalConst.ELEMENT_MULT;
     private static Double modeMult = GlobalConst.MODE_MULT;
     private static Double houseMult = GlobalConst.HOUSE_MULT;
+    static EnumMap<Planet, Float> planetMult;
 
     // Canned queries
     // insert user
@@ -37,6 +38,9 @@ public class Query {
 
     private static final String MAX_USER_ID = "SELECT MAX(uid) AS maxid FROM Users;";
     private PreparedStatement maxUserIDStatement;
+
+    private static final String GET_SESSION = "SELECT MAX(sessionID) AS maxID FROM PlanetMultiplier";
+    private PreparedStatement getSessionStatement;
   
     private static final String INSERT_CELEB_CHART = "INSERT INTO Celeb_Charts(id, planet, zodiac, element, mode, house) VAlUES (?, ?, ?, ?, ?, ?)";
     private PreparedStatement insertCelebChartStatement;
@@ -45,27 +49,25 @@ public class Query {
     private PreparedStatement insertUserChartStatement;
  
     private static final String CALC_MATCHES = "WITH Multiplier AS (SELECT c1.id AS id1, c2.id AS id2, c1.planet AS planet," +
-                                               //" CASE WHEN c1.zodiac = c2.zodiac THEN " + zodiacMult +
-                                               //" WHEN c1.element = c2.element THEN "+ elementMult +
-                                               //" WHEN c1.mode = c2.mode THEN " + modeMult + " ELSE 0 END AS zodiacMult," +
-                                               //" CASE WHEN c1.house = c2.house THEN "+ houseMult + " ELSE 1 END AS houseMult" +
                                                " CASE WHEN c1.zodiac = c2.zodiac THEN ? " + 
                                                " WHEN c1.element = c2.element THEN ? "+ 
-                                               " WHEN c1.mode = c2.mode THEN ? ELSE 0 END AS zodiacMult," +
+                                               " WHEN c1.mode = c2.mode THEN ? ELSE 0 END AS componentMult," +
                                                " CASE WHEN c1.house = c2.house THEN ? ELSE 1 END AS houseMult" +
                                                " FROM [dbo].[User_Charts] AS c1, [dbo].[Celeb_Charts] AS c2" +
                                                " WHERE c1.id = ? AND c1.planet = c2.planet AND (c1.zodiac = c2.zodiac OR c1.element = c2.element OR c1.mode = c2.mode))" +
-                                               " SELECT id2, celebDB.name AS name, SUM(pm.val * zodiacMult * houseMult) AS total" +
+                                               " SELECT id2, celebDB.name AS name, SUM(pm.val * componentMult * houseMult) AS total" +
                                                " FROM Multiplier AS m, [dbo].[PlanetMultiplier] AS pm, [dbo].[Celebs] AS celebDB" +
                                                " WHERE m.planet = pm.planet AND id2 = celebDB.cid" +
                                                " GROUP BY id2, celebDB.name" +
                                                " ORDER BY total DESC;";
     private PreparedStatement calcMatchesStatement;
 
-    private static final String GET_PLANET_MULT = "SELECT * FROM [dbo].[PlanetMultiplier];";
-    private PreparedStatement getPlanetMultStatement;
-    private static final String SET_PLANET_MULT = "UPDATE [dbo].[PlanetMultiplier] SET val = ? WHERE planet = ?;";
+    private static final String SET_PLANET_MULT = "UPDATE [dbo].[PlanetMultiplier] SET val = ? WHERE planet = ? AND sessionID = ?";
     private PreparedStatement setPlanetMultStatement;
+    private static final String REMOVE_PLANET_MULT = "DELETE FROM PlanetMultiplier WHERE sessionID = ?";
+    private PreparedStatement removePlanetStatement;
+    private static final String INSERT_PLANET_MULT = "INSERT INTO PlanetMultiplier(planet, val, sessionID) VALUES (?, ?, ?)";
+    private PreparedStatement insertPlanetMultStatement;
 
     private static final String GET_CELEB = "SELECT * FROM [dbo].[Celebs] WHERE cid = ?;";
     private PreparedStatement getCelebStatement;
@@ -75,9 +77,6 @@ public class Query {
     
     private static final String DB_ERROR = "Database Error";
 
-
-
-
     public Query() throws SQLException, IOException {
         this(null, null, null, null);
     }
@@ -86,8 +85,14 @@ public class Query {
         conn = dbName == null ? openConnectionFromDbConn() 
             : openConnectionFromCredential(serverURL, dbName, adminName, password);
 
+        usersCreated = new HashMap<>();
+        planetMult = new EnumMap<>(Planet.class);
+        
         prepareStatements();
+        sessionID = getSessionID();
         initializePlanetMultipliers();
+        totalPoints = getTotal();
+        System.out.println("total points: " + totalPoints);
     }
 
     /**
@@ -104,11 +109,8 @@ public class Query {
         String dbName = configProps.getProperty("app.database_name");
         String adminName = configProps.getProperty("app.username");
         String password = configProps.getProperty("app.password");
-        System.out.println("url: " + serverURL + " dbName: " + dbName + " adminName: " + adminName + " password: " + password);
-        System.out.println();
 
         return openConnectionFromCredential(serverURL, dbName, adminName, password);
-
     }
 
     /**
@@ -127,7 +129,6 @@ public class Query {
         String connectionUrl =
             String.format("jdbc:sqlserver://%s:1433;databaseName=%s;user=%s;password=%s;encrypt=true;trustServerCertificate=false;hostNameInCertificate=*.database.windows.net;loginTimeout=30", serverURL,
                 dbName, adminName, password);
-        System.out.println(connectionUrl);
         
         //String connectionUrl = "jdbc:sqlserver://celeb-astro.database.windows.net:1433;database=celeb_astro;user=LaurenC;password={Haley923};encrypt=true;trustServerCertificate=false;hostNameInCertificate=*.database.windows.net;loginTimeout=30;";
         Connection conn = DriverManager.getConnection(connectionUrl);
@@ -152,11 +153,14 @@ public class Query {
      * Closes the application-to-database connection
      */
     public void closeConnection() throws SQLException {
-        if (insertedUser) {
-            removeUser(userID);
-        }
-        
         conn.close();
+    }
+
+    public void removeSessionData() throws SQLException {
+        for (Integer ID: usersCreated.keySet()) {
+            removeUser(ID);
+        }
+        removePlanetSession();
     }
 
     /*
@@ -172,15 +176,23 @@ public class Query {
         insertUserChartStatement = conn.prepareStatement(INSERT_USER_CHART);
         insertCelebChartStatement = conn.prepareStatement(INSERT_CELEB_CHART);
         calcMatchesStatement = conn.prepareStatement(CALC_MATCHES);
-        getPlanetMultStatement = conn.prepareStatement(GET_PLANET_MULT);
         setPlanetMultStatement = conn.prepareStatement(SET_PLANET_MULT);
         getCelebStatement = conn.prepareStatement(GET_CELEB);
+        getSessionStatement = conn.prepareStatement(GET_SESSION);
+        removePlanetStatement = conn.prepareStatement(REMOVE_PLANET_MULT);
+        insertPlanetMultStatement = conn.prepareStatement(INSERT_PLANET_MULT);
     }
 
-    private void initializePlanetMultipliers() {
+    private void initializePlanetMultipliers() throws SQLException {
         for (Planet p : Planet.values()) {
-            setPlanetMult(p, p.getMult());
+            insertPlanetMultStatement.clearParameters();
+            insertPlanetMultStatement.setString(1, p.toString());
+            insertPlanetMultStatement.setFloat(2, p.getMult());
+            insertPlanetMultStatement.setInt(3, sessionID);
+            insertPlanetMultStatement.execute();
+            planetMult.put(p, p.getMult());
         }
+        conn.commit();
     }
 
     /*
@@ -202,16 +214,8 @@ public class Query {
             insertUserStatement.execute();
 
             insertUserChart(user, id);
-
             conn.commit();
-            if (insertedUser) {
-                // a user has been previously inserted so we remove that first so we're only searching celebs
-                removeUser(userID);
-            } else {
-                insertedUser = true;
-            }
-            userID = id;
-            this.user = user;
+            usersCreated.put(id, user);
             return "Created user " + user.name + " with id: " + id + "\n";
         } catch (SQLException e) {
             if (isDeadLock(e)) {
@@ -287,7 +291,6 @@ public class Query {
             insertUserChartStatement.setString(4, sign.getElement());
             insertUserChartStatement.setString(5, sign.getMode());
             insertUserChartStatement.setInt(6, house);
-
             insertUserChartStatement.execute();
         }
     }
@@ -310,11 +313,10 @@ public class Query {
         return maxid + 1;
     }
 
-    public String calculateMatches() throws SQLException {
-        if (!insertedUser) {
-            return "User hasn't been inserted yet";
-        }
-        
+    public String calculateMatches(int userID) throws SQLException {
+        if (!usersCreated.containsKey(userID)) {
+            return "User with ID " + userID + " has not been created in this session";
+        }     
         StringBuilder sb = new StringBuilder("");
         calcMatchesStatement.clearParameters();
         calcMatchesStatement.setDouble(1, zodiacMult);
@@ -328,18 +330,21 @@ public class Query {
             int id = results.getInt("id2");
             double sum = results.getDouble("total");
             String name = results.getString("name");
-            sb.append("id: " + id + "\t name: " + name + "\t sum: " + sum + "\t percent match: \n");  
+            double total = (sum / totalPoints) * 100;
+            System.out.println("total points: " + totalPoints);
+            sb.append("id: " + id + "\t name: " + name + "\t sum: " + sum + "\t percent match: " + total + " \n");  
         }
         results.close();
         return sb.toString();
     }
 
-    public String displayMatch(int celebID) throws SQLException, InterruptedException, IOException {
+    public String displayMatch(int personID, int celebID) throws SQLException, InterruptedException, IOException {
         Person celeb = getCeleb(celebID);
         if (celeb == null) {
             return "Error creating celeb with " + celebID;
         }
-        if (insertedUser) {
+        if (usersCreated.containsKey(personID)) {
+            Person user = usersCreated.get(personID);
             return user.compareCharts(celeb);
         } 
         return "User hasn't been inserted into database yet";
@@ -353,10 +358,7 @@ public class Query {
         while(results.next() && celeb == null) {
             String bdayStr = results.getString("bday");
             String bplaceStr = results.getString("bplace");
-            String name = results.getString("username");
-            System.out.println(bdayStr);
-            System.out.println(bplaceStr);
-            System.out.println(name);
+            String name = results.getString("name");
             LocalDateTime date = LocalDateTime.parse(bdayStr);
             String[] tokens = bplaceStr.split(",");
             String town = tokens[0].trim();
@@ -365,13 +367,6 @@ public class Query {
             String longitude = tokens[3].trim();
             String timeZone = tokens[4].trim();
             AtlasModel location = new AtlasModel(latitude, longitude, timeZone, town, country);
-            System.out.println(date);
-            System.out.println(town);
-            System.out.println(country);
-            System.out.println(latitude);
-            System.out.println(longitude);
-            System.out.println(timeZone);
-            System.out.println(location.toString());
             celeb = new Person(name, date, location);
         }
         results.close();
@@ -383,10 +378,6 @@ public class Query {
             removeUserStatement.clearParameters();
             removeUserStatement.setInt(1, personID);
             removeUserStatement.setInt(2, personID);
-            removeUserStatement.setInt(3, personID);
-            removeUserStatement.setInt(4, personID);
-            removeUserStatement.setInt(5, personID);
-            removeUserStatement.setInt(6, personID);
             removeUserStatement.execute();
             conn.commit();
             return "Successfully removed user " + String.valueOf(personID);  
@@ -407,20 +398,22 @@ public class Query {
     }
 
     public String getPlanetMult() throws SQLException {
-        StringBuilder sb = new StringBuilder("");
-        getPlanetMultStatement.clearParameters();
-        ResultSet results = getPlanetMultStatement.executeQuery();
-        EnumMap<Planet, Float> multMap = new EnumMap<>(Planet.class);
-        while (results.next()) {
-            String planet = results.getString("planet");
-            float value = results.getFloat("val");
-            multMap.put(Planet.valueOf(planet.toUpperCase()), value);
+        List<Node> list = new ArrayList<>();
+        StringBuilder retStr = new StringBuilder("");
+        for (Map.Entry<Planet, Float> entry : planetMult.entrySet()) {
+            list.add(new Node(entry.getKey().toString(), (double) entry.getValue()));
         }
-        for (Planet planet : Planet.values()) {
-            sb.append(planet.toString() + " " + multMap.get(planet) + "\n");
+        Collections.sort(list, (n2, n1) -> n1.value.compareTo(n2.value));
+        
+        for (Node n : list) {
+            StringBuilder line = new StringBuilder("");
+            line.append(n.node);
+            int sbLen = line.length();
+            line.append(" ".repeat(GlobalConst.MULT_COL_LEN - sbLen));
+            line.append(n.value + "\n");
+            retStr.append(line);
         }
-        results.close();
-        return sb.toString();   
+        return retStr.toString(); 
     }
 
     public String setPlanetMult(Planet planet, Float value) {
@@ -428,10 +421,13 @@ public class Query {
             setPlanetMultStatement.clearParameters();
             setPlanetMultStatement.setFloat(1, value);
             setPlanetMultStatement.setString(2, planet.toString());
+            setPlanetMultStatement.setInt(3, sessionID);
             setPlanetMultStatement.execute();
             conn.commit();
-            planet.setMult(value);
-            return "Success updating planet " + planet.toString() + " to value " + value.toString();
+            double oldValue = planetMult.get(planet);
+            planetMult.put(planet, value);
+            totalPoints = getTotal();
+            return "Success updating planet " + planet.toString() + " from " + oldValue + " to value " + value.toString() + "\n";
         } catch (SQLException e) {
             if (isDeadLock(e)) {
                 return setPlanetMult(planet, value);
@@ -441,7 +437,7 @@ public class Query {
                 } catch (SQLException e1) {
                   e1.printStackTrace();
                 }
-                return "Error modifying planet " + planet.toString() + " to value " + value.toString();
+                return "Error modifying planet " + planet.toString() + " to value " + value.toString() + "\n";
             }
         } finally {
             checkDanglingTransaction();
@@ -449,31 +445,91 @@ public class Query {
     }
 
     public static String setMult(String multiplier, double value) {
-        if (multiplier.equals("mode")) {
+        if (multiplier.equalsIgnoreCase("mode")) {
             double oldvalue = modeMult;
             modeMult = value;
-            return "mode has been set from " + oldvalue + " to " + value;
-        } else if (multiplier.equals("house")) {
+            totalPoints = getTotal();
+            return "Mode has been set from " + oldvalue + " to " + value + "\n";
+        } else if (multiplier.equalsIgnoreCase("house")) {
             double oldvalue = houseMult;
             houseMult = value;
-            return "house has been set from " + oldvalue + " to " + value;
-        } else if (multiplier.equals("element")) {
+            totalPoints = getTotal();
+            return "House has been set from " + oldvalue + " to " + value + "\n";
+        } else if (multiplier.equalsIgnoreCase("element")) {
             double oldValue = elementMult;
             elementMult = value;
-            return "element has been set from " + oldValue + " to " + value;
+            totalPoints = getTotal();
+            return "Element has been set from " + oldValue + " to " + value + "\n";
+        } else if (multiplier.equalsIgnoreCase("zodiac")) {
+            double oldValue = zodiacMult;
+            zodiacMult = value;
+            totalPoints = getTotal();
+            return "Zodiac has been set from " + oldValue + " to " + value + "\n";
         } else {
-            return "invalid input string must be [mode, house, element]";
+            return "invalid input string must be [mode, house, element, zodiac] \n";
         }
     }
 
     public static String getMult() {
-        StringBuilder sb = new StringBuilder("");
-        sb.append("mode = " + modeMult);
-        sb.append("house = " + houseMult);
-        sb.append("element = " + elementMult);
-        return sb.toString();
+        List<Node> list = new ArrayList<>();
+        list.add(new Node("Zodiac", zodiacMult));
+        list.add(new Node("Mode", modeMult));
+        list.add(new Node("Element", elementMult));
+        list.add(new Node("House", houseMult));
+        
+        Collections.sort(list, (n2, n1) -> n1.value.compareTo(n2.value));
+        StringBuilder retStr = new StringBuilder("");
+        
+        for (Node n : list) {
+            StringBuilder line = new StringBuilder("");
+            line.append(n.node);
+            int sbLen = line.length();
+            line.append(" ".repeat(GlobalConst.MULT_COL_LEN - sbLen));
+            line.append(n.value + "\n");
+            retStr.append(line);
+        }
+
+        return retStr.toString();
     }
 
+    public static double getTotal() {
+        double temp = 0;
+        double componenetMult = Math.max(zodiacMult, Math.max(elementMult, modeMult));
+        for (Map.Entry<Planet, Float> val : planetMult.entrySet()) {
+            temp += val.getValue() * componenetMult * houseMult;
+        }
+        return temp;
+    }
+
+    public int getSessionID() throws SQLException {
+        getSessionStatement.clearParameters();
+        ResultSet results = getSessionStatement.executeQuery();
+        int maxid = 0;
+        if (results.next()) {
+            maxid = results.getInt("maxid");
+        }
+        results.close();
+        return maxid + 1;
+    }
+
+    public void removePlanetSession() throws SQLException {
+        removePlanetStatement.clearParameters();
+        removePlanetStatement.setInt(1, sessionID);
+        removePlanetStatement.execute();
+        conn.commit();
+    }
+
+    public String getUsers() {
+        StringBuilder sb = new StringBuilder("");
+        if (usersCreated.isEmpty()) {
+            return "No users have been created in this session yet";
+        }
+        sb.append("ID \t Name \n");
+        for (Map.Entry<Integer, Person> entry : usersCreated.entrySet()) {
+            sb.append(entry.getKey() + " " + entry.getValue().name + "\n");
+        } 
+        return sb.toString();
+    }
     /**
         * Throw IllegalStateException if transaction not completely complete, rollback.
         * 
@@ -498,5 +554,4 @@ public class Query {
     private static boolean isDeadLock(SQLException ex) {
         return ex.getErrorCode() == 1205;
     }
-
 }

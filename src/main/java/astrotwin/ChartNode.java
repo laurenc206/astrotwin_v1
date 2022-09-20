@@ -8,4 +8,5 @@ public class ChartNode {
         this.node = node;
         this.value = value;
     }
+    
 }

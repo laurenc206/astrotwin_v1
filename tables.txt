@@ -33,9 +33,12 @@ CREATE TABLE User_Charts(
 )
 
 CREATE TABLE PlanetMultiplier(
-	planet varchar(20) PRIMARY KEY,
-	val float
+    planet varchar(20),
+    val float,
+    sessionID int,
+    CONSTRAINT PK_PlanetMult Primary Key (planet, sessionID)
 )
+
 
 CREATE TABLE Multipliers(
 	component varchar(20) PRIMARY KEY,

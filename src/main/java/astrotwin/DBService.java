@@ -5,16 +5,14 @@ import java.util.*;
 import java.util.regex.*;
 import java.sql.*;
 import java.time.LocalDateTime;
-import java.time.Month;
 
 public class DBService {
-
     /**
      * Execute the specified command on the database query connection
      * @throws SQLException
      * @throws IOException
      */
-  public static String execute(Query q, String command) {
+  public static String execute(Query q, String command) throws IOException {
     String[] tokens = tokenize(command.trim());
     String response;
 
@@ -23,11 +21,20 @@ public class DBService {
     }
         
     // insert user and their chart into tables
-    else if (tokens[0].equals("createChart")) {
+    else if (tokens[0].equals("insert")) {
       try {
         System.out.println("Enter birth day and location to calculate chart: ");
-        Person user = getBirthInput(GlobalConst.DEFAULT_NAME);
-        response = q.insertUser(user);
+        if (tokens.length == 1) {
+          Person user = getBirthInput(GlobalConst.DEFAULT_NAME);
+          response = q.insertUser(user);
+        } else {
+          StringBuilder name = new StringBuilder("");
+          for (int i = 1; i < tokens.length; i++) {
+            name.append(tokens[i] + " ");
+          }
+          Person user = getBirthInput(name.toString().trim());
+          response = q.insertUser(user);
+        }
       } catch (IOException | InterruptedException e) {
         e.printStackTrace();
         response = "Error creating person object";
@@ -53,11 +60,11 @@ public class DBService {
       if (tokens.length == 2) {
         int id = Integer.parseInt(tokens[1]);
         response = q.removeUser(id);  
-      } else {
-        response = "Format Error: remove <id>";
-      }
-
-    } else if (tokens[0].equals("getPlanetMultipliers")) {
+      } 
+      response = "Format Error: remove <id>";
+    } 
+    
+    else if (tokens[0].equals("getPlanetMultipliers")) {
       try {
         return q.getPlanetMult();
       } catch (SQLException e) {
@@ -66,47 +73,49 @@ public class DBService {
       response = "Error retrieving planet multipliers";
     }
 
-    else if (tokens[0].equals("setPlanetMultipliers")) {
+    else if (tokens[0].equals("setPlanetMultiplier")) {
       if (tokens.length == 3) {
         Planet planet = Planet.valueOf(tokens[1].toUpperCase());
         Float value = Float.parseFloat(tokens[2]);
         if (planet != null) {
-          response = q.setPlanetMult(planet, value);
+          return q.setPlanetMult(planet, value);
         } else {
-          response = "Invalid planet name";
+          return "Invalid planet name";
         }
-      } else {
-        response = "Format Error: set <planet> <value>";
       }
+      response = "Format Error: set <planet> <value>";
     }
 
     else if (tokens[0].equals("getMatches")) {
-      try {
-        return q.calculateMatches();
-      } catch (SQLException e) {
-        // TODO Auto-generated catch block
-        e.printStackTrace();
-      }
-      response = "Error getting matches";
-    }
-
-    else if (tokens[0].equals("viewMatch")) {
       if (tokens.length == 2) {
-        Integer id = Integer.parseInt(tokens[1]);
         try {
-          return q.displayMatch(id);
+          Integer userID = Integer.parseInt(tokens[1]);
+          return q.calculateMatches(userID);
+        } catch (SQLException e) {
+          // TODO Auto-generated catch block
+          e.printStackTrace();
+        }
+      }
+      response = "Format Error: getMatches <userID>";
+    } 
+    
+    else if (tokens[0].equals("viewMatch")) {
+      if (tokens.length == 3) {
+        Integer userID = Integer.parseInt(tokens[1]);
+        Integer celebID = Integer.parseInt(tokens[2]);
+        try {
+          return q.displayMatch(userID, celebID);
         } catch (SQLException | InterruptedException | IOException e) {
           e.printStackTrace();
         }
         response = "Failure to view matches";
-      } else {
-        response = "Format Error: viewMatch <id>";
       }
-
-    } else if (tokens[0].equals("getChartMultipliers")) {
+      response = "Format Error: viewMatch <id>";
+    } 
+    
+    else if (tokens[0].equals("getChartMultipliers")) {
       return q.getMult();
     }
-
 
     else if (tokens[0].equals("setChartMultiplier")) {
       if (tokens.length == 3) {
@@ -116,16 +125,30 @@ public class DBService {
       } else {
         return "Format Error: setChartMultiplier <house/mode/element> <value>";
       }
+    } 
+    
+    else if (tokens[0].equals("viewUsers")) {
+      return q.getUsers();
+    
+    
+    } else if (tokens[0].equals("modifiers")) {
+      return modifierMenu(q);
     }
 
-        // quit
+    // quit
     else if (tokens[0].equals("quit")) {
+      try {
+        q.removeSessionData();
+      } catch (SQLException e) {
+        // TODO Auto-generated catch block
+        e.printStackTrace();
+      }
       response = "Goodbye\n";
     }
 
-        // unknown command
+    // unknown command
     else {
-      response = "Error: unrecognized command '" + tokens[0] + "'";
+      response = "Error: unrecognized command '" + tokens[0] + "'\n";
     }
 
     return response;
@@ -158,15 +181,14 @@ public class DBService {
       // print the command options
       System.out.println();
       System.out.println(" *** Please enter one of the following commands *** ");
-      System.out.println("> createChart");
-      System.out.println("> datacrawl");
-      System.out.println("> removeUser <id>");
-      System.out.println("> getPlanetMultipliers");
-      System.out.println("> setPlanetMultipliers <planet> <value>");
-      System.out.println("> getChartMultipliers");
-      System.out.println("> setChartMultipliers <house/mode/element> <value>");
-      System.out.println("> getMatches");
-      System.out.println("> viewMatch <id>");
+      System.out.println("> insert <name>");
+      System.out.println("> getMatches <userid>");
+      System.out.println("> viewMatch <userid> <celebid>");
+      System.out.println("> viewUsers");
+      //System.out.println("> datacrawl");
+      //System.out.println("> removeUser <id>");
+      System.out.println("> modifiers");
+
       System.out.println("> quit");
 
       // read an input command from the REPL
@@ -406,6 +428,91 @@ public class DBService {
     } else {
       return 30;
     }
+  }
+
+  private static String modifierMenu(Query q) throws IOException {
+    System.out.println();
+    System.out.println("Matches are calculated by adding up each planet that matches the user's chart and celeb's chart");
+    System.out.println("Each planet is assigned a value. The higher a planets multiplier, the more weight is given to that match");
+    System.out.println("Planets can match as being the same zodiac, mode OR element (if there is not a match the value = 0)");
+    System.out.println("Finally, planets that share a componenet(zodiac, mode or element) get additional points for being in the same house");
+    System.out.println("Thus matches are ranked by summing over (planetMultiplier * componentMultiplier * houseMultiplier)");
+    System.out.println("for every planet with the same component in both charts");
+    System.out.println();
+    System.out.println("Use this menu to modify the importance placed on specific chart components or planets");
+    System.out.println("* For best results zodiac should be greater than mode and element");
+    while (true) {
+      System.out.println("> getPlanetMultipliers");
+      System.out.println("> getChartMultipliers");
+      System.out.println("> setMultiplier");
+      System.out.println("> back");
+
+      BufferedReader r = new BufferedReader(new InputStreamReader(System.in));
+      System.out.print("> ");
+      String command = r.readLine();
+
+      if (command.equals("back")) {
+        break;
+      } else if (command.equals("setMultiplier")) {
+        String setCommand = getSetString();
+        String response = execute(q, setCommand);
+        System.out.println(response);
+      } else {
+        String response = execute(q, command);
+        System.out.println(response);
+      }
+    }
+    return "";
+  }
+
+  private static String getSetString() throws IOException {
+    StringBuilder sb = new StringBuilder("");
+    while (true) {
+      boolean validCommand = false;
+      System.out.print("Enter planet, Component['zodiac', 'mode', 'element'] or 'house': ");
+      BufferedReader r = new BufferedReader(new InputStreamReader(System.in));
+      String command = r.readLine();
+
+      if (command == null) {
+        System.out.println("Please enter valid multiplier\n");
+      } 
+      for (Planet p : Planet.values()) {
+        if (p.toString().equalsIgnoreCase(command)) {
+          sb.append("setPlanetMultiplier " + command);
+          validCommand = true;
+          break;
+        }
+      }
+      if (!validCommand && (command.equals("zodiac") || command.equals("mode") || command.equals("element") || command.equals("house"))) {
+        sb.append("setChartMultiplier " + command);
+        validCommand = true;
+      }
+      if (validCommand) {
+        break;
+      } else {
+        System.out.println("Please enter a valid multiplier\n");
+      }
+    }
+
+    while (true) {
+      System.out.print("Value: ");
+      BufferedReader r = new BufferedReader(new InputStreamReader(System.in));
+      String command = r.readLine();
+
+      if (command == null) {
+        System.out.println("Please enter a value");
+      } 
+
+      try {
+        double d = Double.parseDouble(command);
+        sb.append(" " + d);
+        break;
+      } catch (NumberFormatException e) {
+        System.out.println("Please enter a valid value");
+      }
+    }
+    System.out.println(sb.toString());
+    return sb.toString();
   }
 
 

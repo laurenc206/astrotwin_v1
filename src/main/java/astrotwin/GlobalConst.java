@@ -40,6 +40,7 @@ public class GlobalConst {
     public static final double HOUSE_MULT = 2;
     
     public static final int PROMPT_LEN = 25;
+    public static final int MULT_COL_LEN = 20;
 
     private GlobalConst() {
         throw new IllegalStateException("GlobalConstant class");
