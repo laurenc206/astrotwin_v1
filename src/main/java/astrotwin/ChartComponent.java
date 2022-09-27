@@ -82,14 +82,14 @@ enum Zodiac implements SignComponent{
 }
 
 enum Planet implements SignComponent{
-    ASCENDANT("Ascendant", 3.0), SUN("Sun", 3.0), MOON("Moon", 2.0), 
-    MERCURY("Mercury", 1.5), VENUS("Venus", 1.5), MARS("Mars", 1.5),
-    JUPITER("Jupiter", .5), SATURN("Saturn", .5), URANUS("Uranus", .5), 
-    NEPTUNE("Neptune", .25), PLUTO("Pluto", .25);
+    ASCENDANT("Ascendant"), SUN("Sun"), MOON("Moon"), 
+    MERCURY("Mercury"), VENUS("Venus"), MARS("Mars"),
+    JUPITER("Jupiter"), SATURN("Saturn"), URANUS("Uranus"), 
+    NEPTUNE("Neptune"), PLUTO("Pluto");
     private String planetName;
 
 
-    private Planet(String planet, Double multiplier) {
+    private Planet(String planet) {
         this.planetName = planet;
     }
 

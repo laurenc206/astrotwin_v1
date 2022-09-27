@@ -12,14 +12,10 @@ public class Query {
     // Database Connection
     private Connection conn;
     Map<Integer, Person> usersCreated;
+    Map<Integer, Person> celebCache;
     int sessionID;
     
     // multipliers we can change
-    //private static Double zodiacMult = GlobalConst.ZODIAC_MULT;
-    //private static Double elementMult = GlobalConst.ELEMENT_MULT;
-    //private static Double modeMult = GlobalConst.MODE_MULT;
-    //private static Double houseMult = GlobalConst.HOUSE_MULT;
-    //static EnumMap<Planet, Float> planetMult;
     private static EnumMap<Variable, Double> variableMap;
     
 
@@ -59,19 +55,6 @@ public class Query {
                                                " WHERE cc.id2 = c.cid" +
                                                " GROUP BY cc.id2, c.name" +
                                                " ORDER BY total DESC;";
-    //"WITH Multiplier AS (SELECT c1.id AS id1, c2.id AS id2, c1.planet AS planet," +
-                                               //" CASE WHEN c1.zodiac = c2.zodiac THEN ? " + 
-                                               //" WHEN c1.element = c2.element THEN ? "+ 
-                                               //" WHEN c1.mode = c2.mode THEN ? ELSE 0 END AS componentMult," +
-                                               //" CASE WHEN c1.house = c2.house THEN ? ELSE 1 END AS houseMult" +
-                                               //" FROM [dbo].[User_Charts] AS c1, [dbo].[Celeb_Charts] AS c2" +
-                                               //" WHERE c1.id = ? AND c1.planet = c2.planet AND (c1.zodiac = c2.zodiac OR c1.element = c2.element OR c1.mode = c2.mode))" +
-                                               //" SELECT id2, celebDB.name AS name, SUM(pm.val * componentMult * houseMult) AS total" +
-                                               //" FROM Multiplier AS m, [dbo].[PlanetMultiplier] AS pm, [dbo].[Celebs] AS celebDB" +
-                                               //" WHERE m.planet = pm.planet AND id2 = celebDB.cid" +
-                                               //" GROUP BY id2, celebDB.name" +
-                                               //" ORDER BY total DESC;";
-
 
     private PreparedStatement calcMatchesStatement;
 
@@ -99,7 +82,7 @@ public class Query {
             : openConnectionFromCredential(serverURL, dbName, adminName, password);
 
         usersCreated = new HashMap<>();
-        //planetMult = new EnumMap<>(Planet.class);
+        celebCache = new HashMap<>();
         variableMap = new EnumMap<>(Variable.class);
         for (Variable v : Variable.values()) {
             variableMap.put(v, v.initValue);
@@ -356,16 +339,24 @@ public class Query {
         return sb.toString();
     }
 
-    public String displayMatch(int personID, int celebID) throws SQLException, InterruptedException, IOException {
-        Person celeb = getCeleb(celebID);
-        if (celeb == null) {
-            return "Error creating celeb with " + celebID;
+    public String displayMatch(int personID, int celebID) throws SQLException, InterruptedException, IOException {   
+        if (!usersCreated.containsKey(personID)) {
+            return "User hasn't been inserted into database yet";
         }
-        if (usersCreated.containsKey(personID)) {
-            Person user = usersCreated.get(personID);
-            return user.compareCharts(celeb, variableMap);
-        } 
-        return "User hasn't been inserted into database yet";
+        Person user = usersCreated.get(personID);
+
+        if (!celebCache.containsKey(celebID)) {
+            Person celeb = getCeleb(celebID);
+            if (celeb == null) {
+                return "Error creating celeb with " + celebID;
+            } else {
+                celebCache.put(celebID, celeb);
+                return user.compareCharts(celeb, variableMap);
+            }
+        } else {
+            System.out.println("celeb from cache");
+            return user.compareCharts(celebCache.get(celebID), variableMap);
+        }
     }
 
     private Person getCeleb(int celebID) throws SQLException, InterruptedException, IOException {
