@@ -42,7 +42,11 @@ public class GlobalConst {
     public static final int PROMPT_LEN = 25;
     public static final int MULT_COL_LEN = 20;
 
+    public static final List<String> MATCH_TYPES = new ArrayList<>(Arrays.asList("Zodiac", "Element", "Mode"));
+
     private GlobalConst() {
         throw new IllegalStateException("GlobalConstant class");
     }
+
+
 }

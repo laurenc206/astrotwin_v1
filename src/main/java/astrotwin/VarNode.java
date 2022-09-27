@@ -1,10 +1,10 @@
 package astrotwin;
 
-public class Node {
+public class VarNode {
     String node;
     Double value;
 
-    public Node(String node, Double value) {
+    public VarNode(String node, Double value) {
         this.node = node;
         this.value = value;
     }

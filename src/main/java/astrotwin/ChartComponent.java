@@ -15,6 +15,7 @@ enum Element implements ChartComponent{
 
     private Element(String element) {
         this.elementName = element;
+
     }
 
     @Override
@@ -86,11 +87,10 @@ enum Planet implements SignComponent{
     JUPITER("Jupiter", .5), SATURN("Saturn", .5), URANUS("Uranus", .5), 
     NEPTUNE("Neptune", .25), PLUTO("Pluto", .25);
     private String planetName;
-    private final Float defaultMultiplier;
+
 
     private Planet(String planet, Double multiplier) {
         this.planetName = planet;
-        this.defaultMultiplier = Float.valueOf(String.valueOf(multiplier));
     }
 
     @Override
@@ -100,9 +100,5 @@ enum Planet implements SignComponent{
 
     public String abv() {
         return planetName.substring(0, 3);
-    }
-
-    public Float getMult() {
-        return defaultMultiplier;
     }
  }

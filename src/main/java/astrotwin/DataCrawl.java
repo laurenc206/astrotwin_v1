@@ -55,7 +55,6 @@ public class DataCrawl {
     private List<Person> createPersons(List<String> names) {
         List<Person> personsAdded = new ArrayList<>();
         Random rand = new Random();
-        int i = 0;
         for (String name : names) {
             System.out.println(name);
             try {      
@@ -82,7 +81,6 @@ public class DataCrawl {
 
                 if (celeb != null) {
                     personsAdded.add(celeb);
-                    i++;
                     System.out.println(name + " added");
                 } else {
                     System.out.println(name + " discarded");
@@ -90,10 +88,6 @@ public class DataCrawl {
             } catch (Exception e1) {
                 System.out.println("Unable to add person encountered error while creating Person");
                 e1.printStackTrace();
-            }
-
-            if (i > 1) {
-                break;
             }
 
         }

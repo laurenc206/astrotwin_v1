@@ -63,28 +63,36 @@ public class DBService {
       } 
       response = "Format Error: remove <id>";
     } 
-    
-    else if (tokens[0].equals("getPlanetMultipliers")) {
-      try {
-        return q.getPlanetMult();
-      } catch (SQLException e) {
-        e.printStackTrace();
-      }
-      response = "Error retrieving planet multipliers";
+
+    else if (tokens[0].equals("setVars")) {
+      response = q.setVar(tokens[1], Double.valueOf(tokens[2]));
     }
 
-    else if (tokens[0].equals("setPlanetMultiplier")) {
-      if (tokens.length == 3) {
-        Planet planet = Planet.valueOf(tokens[1].toUpperCase());
-        Float value = Float.parseFloat(tokens[2]);
-        if (planet != null) {
-          return q.setPlanetMult(planet, value);
-        } else {
-          return "Invalid planet name";
-        }
-      }
-      response = "Format Error: set <planet> <value>";
+    else if (tokens[0].equals("getVars")) {
+      response = q.getVars();
     }
+    
+    //else if (tokens[0].equals("getPlanetMultipliers")) {
+    //  try {
+    //    return q.getPlanetMult();
+    //  } catch (SQLException e) {
+    //    e.printStackTrace();
+    //  }
+    //  response = "Error retrieving planet multipliers";
+    //}
+
+    //else if (tokens[0].equals("setPlanetMultiplier")) {
+    //  if (tokens.length == 3) {
+    //    Planet planet = Planet.valueOf(tokens[1].toUpperCase());
+     //   Float value = Float.parseFloat(tokens[2]);
+     //   if (planet != null) {
+     //     return q.setPlanetMult(planet, value);
+     //   } else {
+     //     return "Invalid planet name";
+     //   }
+     // }
+     // response = "Format Error: set <planet> <value>";
+    //}
 
     else if (tokens[0].equals("getMatches")) {
       if (tokens.length == 2) {
@@ -113,19 +121,19 @@ public class DBService {
       response = "Format Error: viewMatch <id>";
     } 
     
-    else if (tokens[0].equals("getChartMultipliers")) {
-      return q.getMult();
-    }
+    //else if (tokens[0].equals("getChartMultipliers")) {
+    //  return q.getMult();
+    //}
 
-    else if (tokens[0].equals("setChartMultiplier")) {
-      if (tokens.length == 3) {
-        String component = tokens[1];
-        Double value = Double.parseDouble(tokens[2]);
-        return q.setMult(component,  value);
-      } else {
-        return "Format Error: setChartMultiplier <house/mode/element> <value>";
-      }
-    } 
+    //else if (tokens[0].equals("setChartMultiplier")) {
+    //  if (tokens.length == 3) {
+    //    String component = tokens[1];
+    //    Double value = Double.parseDouble(tokens[2]);
+    //    return q.setMult(component,  value);
+    //  } else {
+    //    return "Format Error: setChartMultiplier <house/mode/element> <value>";
+    //  }
+    //} 
     
     else if (tokens[0].equals("viewUsers")) {
       return q.getUsers();
@@ -182,8 +190,8 @@ public class DBService {
       System.out.println();
       System.out.println(" *** Please enter one of the following commands *** ");
       System.out.println("> insert <name>");
-      System.out.println("> getMatches <userid>");
-      System.out.println("> viewMatch <userid> <celebid>");
+      System.out.println("> getMatches <userID>");
+      System.out.println("> viewMatch <userID> <celebID>");
       System.out.println("> viewUsers");
       //System.out.println("> datacrawl");
       //System.out.println("> removeUser <id>");
@@ -437,14 +445,16 @@ public class DBService {
     System.out.println("Planets can match as being the same zodiac, mode OR element (if there is not a match the value = 0)");
     System.out.println("Finally, planets that share a componenet(zodiac, mode or element) get additional points for being in the same house");
     System.out.println("Thus matches are ranked by summing over (planetMultiplier * componentMultiplier * houseMultiplier)");
-    System.out.println("for every planet with the same component in both charts");
+    System.out.println("for every planet in both charts");
     System.out.println();
     System.out.println("Use this menu to modify the importance placed on specific chart components or planets");
     System.out.println("* For best results zodiac should be greater than mode and element");
     while (true) {
-      System.out.println("> getPlanetMultipliers");
-      System.out.println("> getChartMultipliers");
-      System.out.println("> setMultiplier");
+      System.out.println("> getVars");
+      System.out.println("> setVars");
+      //System.out.println("> getPlanetMultipliers");
+      //System.out.println("> getChartMultipliers");
+      //System.out.println("> setMultiplier");
       System.out.println("> back");
 
       BufferedReader r = new BufferedReader(new InputStreamReader(System.in));
@@ -453,13 +463,16 @@ public class DBService {
 
       if (command.equals("back")) {
         break;
-      } else if (command.equals("setMultiplier")) {
+      } else if (command.equalsIgnoreCase("setVars")) {
         String setCommand = getSetString();
         String response = execute(q, setCommand);
         System.out.println(response);
-      } else {
+      } else if (command.equalsIgnoreCase("getVars")) {
         String response = execute(q, command);
         System.out.println(response);
+      } else {
+        System.out.println("Please enter a valid response");
+        continue;
       }
     }
     return "";
@@ -475,18 +488,15 @@ public class DBService {
 
       if (command == null) {
         System.out.println("Please enter valid multiplier\n");
-      } 
-      for (Planet p : Planet.values()) {
-        if (p.toString().equalsIgnoreCase(command)) {
-          sb.append("setPlanetMultiplier " + command);
+      }
+      for (Variable v : Variable.values()) {
+        if (command.equalsIgnoreCase(v.name)) {
+          sb.append("setVars " + command);
           validCommand = true;
           break;
         }
       }
-      if (!validCommand && (command.equals("zodiac") || command.equals("mode") || command.equals("element") || command.equals("house"))) {
-        sb.append("setChartMultiplier " + command);
-        validCommand = true;
-      }
+
       if (validCommand) {
         break;
       } else {

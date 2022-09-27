@@ -34,13 +34,9 @@ public class Chart {
         this.elementPercent = new ArrayList<>(Element.values().length);
         this.zodiacPercent = new ArrayList<>(Zodiac.values().length);
         this.planetPercent = new ArrayList<>(Planet.values().length);
-
-        //this.percentMap = new HashMap<>();
         
         String inputStr = getChartData();
-        System.out.println(inputStr);
         String[] astrologInput = inputStr.split(System.lineSeparator());
-        System.out.println(inputStr);
         if (astrologInput.length < 2) throw new IIOException("Unable to retrieve chart from astrolog");
         
         extractPlanetMap(astrologInput);
@@ -68,7 +64,6 @@ public class Chart {
                 }
             }
         }
-        //System.out.println(sb.toString());
         return sb.toString();
     }
 
