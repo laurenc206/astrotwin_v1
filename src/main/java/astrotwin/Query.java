@@ -6,6 +6,7 @@ import java.util.*;
 
 import java.sql.Connection;
 import java.sql.SQLException;
+import java.text.DecimalFormat;
 import java.time.LocalDateTime;
 
 public class Query {
@@ -356,14 +357,20 @@ public class Query {
         calcMatchesStatement.setInt(6, sessionID);
         ResultSet results = calcMatchesStatement.executeQuery();
         double totalPoints = getTotal();
-
+        DecimalFormat df = new DecimalFormat("#.##");
         while(results.next()) {
             int id = results.getInt("id2");
             double sum = results.getDouble("total");
             String name = results.getString("name");         
             double total = (sum / totalPoints) * 100;
             //System.out.println("total points: " + totalPoints);
-            sb.append("celebID: " + id + "\t name: " + name + "\t sum: " + sum + "\t percent match: " + total + " \n");  
+            List<String> colVals = new ArrayList<>();
+            colVals.add("celebID: " + id);
+            colVals.add("name: " + name);
+            colVals.add("sum: " + df.format(sum));
+            colVals.add("percent: " + df.format(total));
+            sb.append(getLine(colVals));
+            //sb.append("celebID: " + id + "\t name: " + name + "\t sum: " + sum + "\t percent match: " + total + " \n");  
         }
         results.close();
         return sb.toString();
