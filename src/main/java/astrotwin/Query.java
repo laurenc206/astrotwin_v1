@@ -609,7 +609,7 @@ public class Query {
             StringBuilder cell = new StringBuilder("");
             cell.append(col);
             int len = cell.length();
-            cell.append(" ".repeat(GlobalConst.MULT_COL_LEN - len));
+            cell.append(" ".repeat(GlobalConst.ALL_MATCH_LEN - len));
             retStr.append(cell);
         }
         retStr.append("\n");

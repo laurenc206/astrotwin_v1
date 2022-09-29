@@ -195,7 +195,7 @@ public class Chart {
     public String toString() {
         StringBuilder sb = new StringBuilder("");        
         //sb.append(person.birthLocation.toString() +  "\n");
-        sb.append("** Chart **\n");
+        sb.append(" *** Chart ***\n");
         for (Planet p : Planet.values()) {
             Zodiac value = signMap.get(p);
             List<String> colVals = new ArrayList<>();
@@ -203,7 +203,7 @@ public class Chart {
             colVals.add(value.toString());
             sb.append(getLine(colVals));
         }
-        sb.append("\n** Chart Percentages **");
+        sb.append("\n *** Chart Percentages ***");
         sb.append("\nPlanet Influence:\n");
         for (ChartNode n : planetPercent) {
             //sb.append(n.node.toString() + " = " + n.value + "\n");
@@ -245,7 +245,7 @@ public class Chart {
             StringBuilder cell = new StringBuilder("");
             cell.append(col);
             int len = cell.length();
-            cell.append(" ".repeat(GlobalConst.MULT_COL_LEN - len));
+            cell.append(" ".repeat(GlobalConst.CHART_LEN - len));
             retStr.append(cell);
         }
         retStr.append("\n");

@@ -40,7 +40,9 @@ public class GlobalConst {
     public static final double HOUSE_MULT = 2;
     
     public static final int PROMPT_LEN = 25;
-    public static final int MULT_COL_LEN = 30;
+    public static final int ALL_MATCH_LEN = 30;
+    public static final int ONE_MATCH_LEN = 20;
+    public static final int CHART_LEN = 20;
 
     public static final List<String> MATCH_TYPES = new ArrayList<>(Arrays.asList("Zodiac", "Element", "Mode"));
 

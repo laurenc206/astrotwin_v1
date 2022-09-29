@@ -188,15 +188,14 @@ public class DBService {
       System.out.println();
       System.out.println(" *** Please enter one of the following commands *** ");
       System.out.println("> insert <name>");
-      System.out.println("> viewUsers");
       System.out.println("> getMatches <userID>");
       System.out.println("> viewMatch <userID> <celebID>");
+      System.out.println("> viewUsers");
       System.out.println("> viewChart <userID>");
-      System.out.println("> insertCeleb <name>");
       //System.out.println("> datacrawl");
       //System.out.println("> removeUser <id>");
       System.out.println("> modifyVariables");
-
+      System.out.println("> insertCeleb <name>");
       System.out.println("> quit");
 
       // read an input command from the REPL

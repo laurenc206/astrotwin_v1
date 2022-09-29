@@ -65,12 +65,6 @@ public class Person {
     }
 
     public String compareCharts(Person p, EnumMap<Variable, Double> variableMap) {
-
-        System.out.println("variableMap : ");
-        for (Variable v : Variable.values()) {
-            System.out.println(v.toString() +  " " + variableMap.get(v));
-        }
-
         StringBuilder sb = new StringBuilder("");
         List<String> colHeader = new ArrayList<>(Arrays.asList("Planet", this.name, p.name, "Planet Value", "Match Value", "House Value", "Total"));
         // save variables for equations so we dont have to look-up every match
@@ -143,7 +137,7 @@ public class Person {
             sb.append(getLine(col) + "\n");
             total += colTotal;
         }
-        sb.append(" ".repeat(6 * GlobalConst.MULT_COL_LEN) + total);
+        sb.append(" ".repeat(6 * GlobalConst.ONE_MATCH_LEN) + total);
         return sb.toString();
     }
 
@@ -153,7 +147,7 @@ public class Person {
             StringBuilder cell = new StringBuilder("");
             cell.append(col);
             int len = cell.length();
-            cell.append(" ".repeat(GlobalConst.MULT_COL_LEN - len));
+            cell.append(" ".repeat(GlobalConst.ONE_MATCH_LEN - len));
             retStr.append(cell);
         }
         retStr.append("\n");
