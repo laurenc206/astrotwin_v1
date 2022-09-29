@@ -22,7 +22,7 @@ public class AtlasModel {
         } else {
             placeIdentifyStr = country;
         }
-        System.out.println("Location searching: " + town + ", " + country);
+        //System.out.println("Location searching: " + town + ", " + country);
 
         String output = getLocationData(GlobalConst.DEFAULT_NAME, town, year);
         String[] lines = output.split("\n");
@@ -60,7 +60,7 @@ public class AtlasModel {
                     this.longitude = polarTokens[0];
                     this.latitude = polarTokens[1];
                     this.zone = polarTokens[2];
-                    System.out.println("Location selected: " + line);
+                    //System.out.println("Location selected: " + line);
                     locationFound = true;
                     break;
                 }

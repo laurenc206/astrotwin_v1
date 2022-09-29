@@ -90,20 +90,6 @@ public class Chart {
 
             } 
         }
-
-        System.out.println("Signs");
-        for (Map.Entry<?, ?> e : signMap.entrySet()) {
-            System.out.println(e.getKey() + " = " + e.getValue());
-        }
-        System.out.println("House");
-        for (Map.Entry<?, ?> e : houseMap.entrySet()) {
-            System.out.println(e.getKey() + " = " + e.getValue());
-        }
-        System.out.println("Cusp");
-        for (Map.Entry<?, ?> e : cuspMap.entrySet()) {
-            System.out.println(e.getKey() + " = " + e.getValue());
-        }
-
     }
 
     private void extractAnalysis(String[] astrologInput) {

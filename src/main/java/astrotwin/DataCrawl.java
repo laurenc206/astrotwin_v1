@@ -31,25 +31,34 @@ public class DataCrawl {
                 }
 
 
-            } else {
-                // Sample set including names with 1-3 spaces, repeat names, fictional names and names of ancient women
-                //names.add("Elizabeth Blackwell");
-                //names.add("Elizabeth Cady Stanton");
-                //names.add("Madonna");
-                //names.add("Diana, Princess of Wales"); // includes comma and multiple words (not names)
-                //names.add("Artemisia");     // ancient greek 
-                //names.add("Molly Pitcher"); // fictional woman
-                //names.add("Bruce Willis");
-                //names.add("Megan Fox");
-                names.add("Jennifer Love Hewitt");
-            }
-
+            } 
         } catch (Exception e) {
             e.printStackTrace();
         }
 
         return createPersons(names);
         
+    }
+
+    public Person searchAstroBank(String name) {
+        String nameFormatted = formatName(name);
+        // Send url request
+        Document response;
+        try {
+            response = Jsoup.connect(String.format(GlobalConst.CELEB_CHART, nameFormatted)).get();
+            Elements elements = response.select("td");
+            // Save strings from response with information we need to extract data to create Birthday for Person
+            try {
+                Person celeb = getPerson(name, elements);
+                return celeb;
+            } catch (Exception e1) {
+                System.out.println("Unable to add person encountered error while creating Person");
+                e1.printStackTrace();
+            }
+        } catch (IOException e1) {
+            System.out.println("Unable to search astro-databank for " + nameFormatted);
+        }
+        return null; 
     }
 
     private List<Person> createPersons(List<String> names) {
@@ -63,33 +72,13 @@ public class DataCrawl {
                 Thread.currentThread().interrupt();
             }
             // Loop through names and format <LastName>,_<FirstName>_<OptionalMiddle>
-            String nameFormatted = formatName(name);
-            System.out.println(nameFormatted);
-            // Send url request
-            Document response;
-            try {
-                response = Jsoup.connect(String.format(GlobalConst.CELEB_CHART, nameFormatted)).get();
-            } catch (IOException e1) {
-                System.out.println("Unable to search astro-databank for " + nameFormatted);
-                continue; // Go onto next name in list
+            Person celeb = searchAstroBank(name);
+            if (celeb != null) {
+                personsAdded.add(celeb);
+                System.out.println(name + " added");
+            } else {
+                System.out.println(name + " discarded");
             }
-            Elements elements = response.select("td");
-              
-            // Save strings from response with information we need to extract data to create Birthday for Person
-            try {
-            Person celeb = getPerson(name, elements);
-
-                if (celeb != null) {
-                    personsAdded.add(celeb);
-                    System.out.println(name + " added");
-                } else {
-                    System.out.println(name + " discarded");
-                }
-            } catch (Exception e1) {
-                System.out.println("Unable to add person encountered error while creating Person");
-                e1.printStackTrace();
-            }
-
         }
         return personsAdded;
     }
@@ -128,15 +117,15 @@ public class DataCrawl {
                     saveTimezone = true;
                 } else if (saveDate) {
                     dateStr.append(e.text());
-                    System.out.println("datestr: " + dateStr.toString());
+                    //System.out.println("datestr: " + dateStr.toString());
                     saveDate = false;
                 } else if (savePlace) {
                     placeStr.append(e.text());
-                    System.out.println("placestr: " + placeStr.toString());
+                    //System.out.println("placestr: " + placeStr.toString());
                     savePlace = false;
                 } else if (saveTimezone) {
                     timezoneStr.append(e.text());
-                    System.out.println("timezonestr: " + timezoneStr.toString());
+                    //System.out.println("timezonestr: " + timezoneStr.toString());
                     break;
                 }     
             }

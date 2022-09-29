@@ -9,8 +9,9 @@ import java.time.LocalDateTime;
 public class DBService {
     /**
      * Execute the specified command on the database query connection
-     * @throws SQLException
      * @throws IOException
+     * @throws Exception
+     * @throws SQLException
      */
   public static String execute(Query q, String command) throws IOException {
     String[] tokens = tokenize(command.trim());
@@ -48,7 +49,8 @@ public class DBService {
           List<Person> celebs = d.tellTalesMostPopular();
           for (Person celeb : celebs) {
             System.out.println("Inserting: " + celeb.name);
-            q.insertCeleb(celeb);
+            String insertResponse = q.insertCeleb(celeb);
+            System.out.println(insertResponse);
           }
         } catch (IOException e) {
           e.printStackTrace();
@@ -72,28 +74,6 @@ public class DBService {
       response = q.getVars();
     }
     
-    //else if (tokens[0].equals("getPlanetMultipliers")) {
-    //  try {
-    //    return q.getPlanetMult();
-    //  } catch (SQLException e) {
-    //    e.printStackTrace();
-    //  }
-    //  response = "Error retrieving planet multipliers";
-    //}
-
-    //else if (tokens[0].equals("setPlanetMultiplier")) {
-    //  if (tokens.length == 3) {
-    //    Planet planet = Planet.valueOf(tokens[1].toUpperCase());
-     //   Float value = Float.parseFloat(tokens[2]);
-     //   if (planet != null) {
-     //     return q.setPlanetMult(planet, value);
-     //   } else {
-     //     return "Invalid planet name";
-     //   }
-     // }
-     // response = "Format Error: set <planet> <value>";
-    //}
-
     else if (tokens[0].equals("getMatches")) {
       if (tokens.length == 2) {
         try {
@@ -116,30 +96,36 @@ public class DBService {
         } catch (SQLException | InterruptedException | IOException e) {
           e.printStackTrace();
         }
-        response = "Failure to view matches";
+        return "Failure to view matches";
       }
-      response = "Format Error: viewMatch <id>";
+      return "Format Error: viewMatch <id>";
     } 
     
-    //else if (tokens[0].equals("getChartMultipliers")) {
-    //  return q.getMult();
-    //}
-
-    //else if (tokens[0].equals("setChartMultiplier")) {
-    //  if (tokens.length == 3) {
-    //    String component = tokens[1];
-    //    Double value = Double.parseDouble(tokens[2]);
-    //    return q.setMult(component,  value);
-    //  } else {
-    //    return "Format Error: setChartMultiplier <house/mode/element> <value>";
-    //  }
-    //} 
+    else if (tokens[0].equals("insertCeleb")) {
+      if (tokens.length > 1) {
+        StringBuilder name = new StringBuilder("");
+        for (int i = 1; i < tokens.length; i++) {
+          name.append(tokens[i] + " ");
+        }
+        String nameStr = name.toString().trim();
+        if (q.containsCeleb(nameStr)) {
+          return nameStr + " already exists in database";
+        }
+        DataCrawl d = new DataCrawl();
+        Person celeb = d.searchAstroBank(nameStr);
+        if (celeb != null) {
+          return q.insertCeleb(celeb);
+        } else {
+          return "Unable to create chart for " + nameStr;
+        }
+      }
+      response = "Format error: insertCeleb <name>";
+    }
     
     else if (tokens[0].equals("viewUsers")) {
       return q.getUsers();
-    
-    
-    } else if (tokens[0].equals("modifiers")) {
+     
+    } else if (tokens[0].equals("modifyVariables")) {
       return modifierMenu(q);
     }
 
@@ -148,7 +134,6 @@ public class DBService {
       try {
         q.removeSessionData();
       } catch (SQLException e) {
-        // TODO Auto-generated catch block
         e.printStackTrace();
       }
       response = "Goodbye\n";
@@ -193,9 +178,10 @@ public class DBService {
       System.out.println("> getMatches <userID>");
       System.out.println("> viewMatch <userID> <celebID>");
       System.out.println("> viewUsers");
+      System.out.println("> insertCeleb <name>");
       //System.out.println("> datacrawl");
       //System.out.println("> removeUser <id>");
-      System.out.println("> modifiers");
+      System.out.println("> modifyVariables");
 
       System.out.println("> quit");
 
@@ -452,9 +438,6 @@ public class DBService {
     while (true) {
       System.out.println("> getVars");
       System.out.println("> setVars");
-      //System.out.println("> getPlanetMultipliers");
-      //System.out.println("> getChartMultipliers");
-      //System.out.println("> setMultiplier");
       System.out.println("> back");
 
       BufferedReader r = new BufferedReader(new InputStreamReader(System.in));

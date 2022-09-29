@@ -14,6 +14,7 @@ public class Query {
     Map<Integer, Person> usersCreated;
     Map<Integer, Person> celebCache;
     int sessionID;
+    Set<String> celebsInDatabase;
     
     // multipliers we can change
     private static EnumMap<Variable, Double> variableMap;
@@ -67,6 +68,9 @@ public class Query {
 
     private static final String GET_CELEB = "SELECT * FROM [dbo].[Celebs] WHERE cid = ?;";
     private PreparedStatement getCelebStatement;
+
+    private static final String GET_ALL_CELEBS = "SELECT * FROM [dbo].[Celebs]";
+    private PreparedStatement getAllCelebsStatement;
     // For check dangling
     private static final String TRANCOUNT_SQL = "SELECT @@TRANCOUNT AS tran_count";
     private PreparedStatement tranCountStatement;
@@ -83,6 +87,7 @@ public class Query {
 
         usersCreated = new HashMap<>();
         celebCache = new HashMap<>();
+        celebsInDatabase = new HashSet<>();
         variableMap = new EnumMap<>(Variable.class);
         for (Variable v : Variable.values()) {
             variableMap.put(v, v.initValue);
@@ -91,6 +96,7 @@ public class Query {
         prepareStatements();
         sessionID = getSessionID();
         initializePlanetMultipliers();
+        initalizeCelebList();
     }
 
     /**
@@ -179,6 +185,7 @@ public class Query {
         getSessionStatement = conn.prepareStatement(GET_SESSION);
         removePlanetStatement = conn.prepareStatement(REMOVE_PLANET_MULT);
         insertPlanetMultStatement = conn.prepareStatement(INSERT_PLANET_MULT);
+        getAllCelebsStatement = conn.prepareStatement(GET_ALL_CELEBS);
     }
 
     private void initializePlanetMultipliers() throws SQLException {
@@ -192,6 +199,16 @@ public class Query {
             insertPlanetMultStatement.execute();
         }
         conn.commit();
+    }
+
+    private void initalizeCelebList() throws SQLException {
+        getAllCelebsStatement.clearParameters();
+        ResultSet results = getAllCelebsStatement.executeQuery();
+        while(results.next()) {
+            String name = results.getString("name");
+            celebsInDatabase.add(name);
+        }
+        results.close();
     }
 
     /*
@@ -215,7 +232,12 @@ public class Query {
             insertUserChart(user, id);
             conn.commit();
             usersCreated.put(id, user);
-            return "Created user " + user.name + " with id: " + id + "\n";
+            StringBuilder response = new StringBuilder("");
+            response.append("\nUser created " + user.name + "\n");
+            response.append("\tBirthday: " + user.getBirthday() + "\n");
+            response.append("\tBirthplace: " + user.getBirthLocation() + "\n");
+            response.append("\tuserID: " + id + "\n");
+            return response.toString();
         } catch (SQLException e) {
             if (isDeadLock(e)) {
                 return insertUser(user);
@@ -233,6 +255,7 @@ public class Query {
         }
     }
 
+    //public String insertCeleb(Person celeb) {
     public String insertCeleb(Person celeb) {
         int id;
         try {
@@ -244,8 +267,14 @@ public class Query {
             insertCelebStatement.setString(4, celeb.getBirthLocation());
             insertCelebStatement.execute();
             insertCelebChart(celeb, id);
-            conn.commit();
-            return "Created celeb " + celeb.name + " with id: " + id + "\n";
+            conn.commit();         
+            StringBuilder response = new StringBuilder("");
+            response.append("\n" + celeb.name + " inserted into database: \n");
+            response.append("\tBirthday: " + celeb.getBirthday() + "\n");
+            response.append("\tBirthplace: " + celeb.getBirthLocation() + "\n");
+            return response.toString();
+
+            //return "Created celeb " + celeb.name + " with id: " + id + "\n";
         } catch (SQLException e) {
             if (isDeadLock(e)) {
                 return insertCeleb(celeb);
@@ -255,8 +284,9 @@ public class Query {
                 } catch (SQLException e1) {
                   e1.printStackTrace();
                 }
-                e.printStackTrace();
-                return "Inserting celeb failed\n";
+                //e.printStackTrace();
+                return "Unable to insert " + celeb.name + " into database";
+                //return "Inserting celeb failed\n";
             }
         } finally {
             checkDanglingTransaction();
@@ -354,7 +384,7 @@ public class Query {
                 return user.compareCharts(celeb, variableMap);
             }
         } else {
-            System.out.println("celeb from cache");
+            //System.out.println("celeb from cache");
             return user.compareCharts(celebCache.get(celebID), variableMap);
         }
     }
@@ -380,6 +410,10 @@ public class Query {
         }
         results.close();
         return celeb;
+    }
+
+    public boolean containsCeleb(String name) {
+        return celebsInDatabase.contains(name);
     }
 
     public String removeUser(int personID) {
@@ -510,31 +544,6 @@ public class Query {
     public boolean lessThanZodiac(double value) {
         return Double.compare(value, variableMap.get(Variable.ZODIAC)) > 0;
     }
-
-    //public static String setMult(String variable, double newValue) {
-
-        //if (multiplier.equalsIgnoreCase("mode")) {
-        //    double oldvalue = modeMult;
-        //    modeMult = value;
-        //    return "Mode has been set from " + oldvalue + " to " + value + "\n";
-        //} else if (multiplier.equalsIgnoreCase("house")) {
-        //    double oldvalue = houseMult;
-        //    houseMult = value;
-        //    return "House has been set from " + oldvalue + " to " + value + "\n";
-        //} else if (multiplier.equalsIgnoreCase("element")) {
-        //    double oldValue = elementMult;
-        //    elementMult = value;
-        //    return "Element has been set from " + oldValue + " to " + value + "\n";
-        //} else if (multiplier.equalsIgnoreCase("zodiac")) {
-        //    double oldValue = zodiacMult;
-        //    zodiacMult = value;
-        //    return "Zodiac has been set from " + oldValue + " to " + value + "\n";
-        //} else {
-            //return "invalid input string must be [mode, house, element, zodiac] \n";
-        //}
-    //}
-
-
 
     private static double getTotal() {
         double planetSum = 0;
