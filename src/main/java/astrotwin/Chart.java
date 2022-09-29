@@ -194,29 +194,62 @@ public class Chart {
     @Override
     public String toString() {
         StringBuilder sb = new StringBuilder("");        
-        sb.append(person.birthLocation.toString() +  "\n");
-        
-        for (Map.Entry<Planet, Zodiac> entry : signMap.entrySet()) {
-            sb.append(entry.getKey() + " = " + entry.getValue());
-            sb.append("\n");
+        //sb.append(person.birthLocation.toString() +  "\n");
+        sb.append("** Chart **\n");
+        for (Planet p : Planet.values()) {
+            Zodiac value = signMap.get(p);
+            List<String> colVals = new ArrayList<>();
+            colVals.add(p.toString());
+            colVals.add(value.toString());
+            sb.append(getLine(colVals));
         }
-        sb.append("Planets:\n");
+        sb.append("\n** Chart Percentages **");
+        sb.append("\nPlanet Influence:\n");
         for (ChartNode n : planetPercent) {
-            sb.append(n.node.toString() + " = " + n.value + "\n");
+            //sb.append(n.node.toString() + " = " + n.value + "\n");
+            List<String> colVals = new ArrayList<>();
+            colVals.add(n.node.toString());
+            colVals.add(n.value.toString());
+            sb.append(getLine(colVals));
         }
-        sb.append("Zodiacs:\n");
+        sb.append("\nZodiac Influence:\n");
         for (ChartNode n : zodiacPercent) {
-            sb.append(n.node.toString() + " = " + n.value + "\n");
+            //sb.append(n.node.toString() + " = " + n.value + "\n");
+            List<String> colVals = new ArrayList<>();
+            colVals.add(n.node.toString());
+            colVals.add(n.value.toString());
+            sb.append(getLine(colVals));
         }
-        sb.append("Modes:\n");
+        sb.append("\nMode Composition:\n");
         for (ChartNode n : modePercent) {
-            sb.append(n.node.toString() + " = " + n.value + "\n");
+            //sb.append(n.node.toString() + " = " + n.value + "\n");
+            List<String> colVals = new ArrayList<>();
+            colVals.add(n.node.toString());
+            colVals.add(n.value.toString());
+            sb.append(getLine(colVals));
         }
-        sb.append("Elements:\n");
+        sb.append("\nElement Composition:\n");
         for (ChartNode n : elementPercent) {
-            sb.append(n.node.toString() + " = " + n.value + "\n");
+            //sb.append(n.node.toString() + " = " + n.value + "\n");
+            List<String> colVals = new ArrayList<>();
+            colVals.add(n.node.toString());
+            colVals.add(n.value.toString());
+            sb.append(getLine(colVals));
         }
         return sb.toString();
+    }
+
+    private String getLine(List<String> columnVals) {
+        StringBuilder retStr = new StringBuilder();
+        for(String col : columnVals) {
+            StringBuilder cell = new StringBuilder("");
+            cell.append(col);
+            int len = cell.length();
+            cell.append(" ".repeat(GlobalConst.MULT_COL_LEN - len));
+            retStr.append(cell);
+        }
+        retStr.append("\n");
+        return retStr.toString();
     }
 
 }

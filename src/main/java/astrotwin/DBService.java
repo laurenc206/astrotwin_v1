@@ -129,6 +129,19 @@ public class DBService {
       return modifierMenu(q);
     }
 
+    else if (tokens[0].equals("viewChart")) {
+      if (tokens.length == 2) {
+        Integer userID = Integer.parseInt(tokens[1]);
+        if (!q.usersCreated.containsKey(userID)) {
+          return "User with userID " + userID + " hasn't been created yet \n";
+        }
+        Person user = q.usersCreated.get(userID);
+        return user.chart.toString() + "\n";
+
+      }
+      response = "Format error: viewChart <userID>";
+    }
+
     // quit
     else if (tokens[0].equals("quit")) {
       try {
@@ -175,9 +188,10 @@ public class DBService {
       System.out.println();
       System.out.println(" *** Please enter one of the following commands *** ");
       System.out.println("> insert <name>");
+      System.out.println("> viewUsers");
       System.out.println("> getMatches <userID>");
       System.out.println("> viewMatch <userID> <celebID>");
-      System.out.println("> viewUsers");
+      System.out.println("> viewChart <userID>");
       System.out.println("> insertCeleb <name>");
       //System.out.println("> datacrawl");
       //System.out.println("> removeUser <id>");

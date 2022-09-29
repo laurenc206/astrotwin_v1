@@ -558,9 +558,6 @@ public class Query {
             Double value = variableMap.get(Variable.valueOf(p.toString().toUpperCase()));
             planetSum += value;
         }
-        System.out.println("planet sum " + planetSum);
-        System.out.println("match max " + matchMax);
-        System.out.println("house " + houseVal);
         return planetSum * matchMax * houseVal;
     }
 
