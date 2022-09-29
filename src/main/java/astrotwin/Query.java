@@ -507,6 +507,10 @@ public class Query {
         }
     }
 
+    public boolean lessThanZodiac(double value) {
+        return Double.compare(value, variableMap.get(Variable.ZODIAC)) > 0;
+    }
+
     //public static String setMult(String variable, double newValue) {
 
         //if (multiplier.equalsIgnoreCase("mode")) {

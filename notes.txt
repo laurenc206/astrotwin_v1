@@ -65,3 +65,18 @@ If mac must download mac version and put into astrolog folder
    May need to go into system preferences (see "unidentified developer" in readme.txt)
    Replace astrolog with mac version
    --> May need to add atlas.as to astrolog for cities
+
+
+
+Finding ways to reuse code when adding new features
+   If i made methods open enough I was able to reuse them when adding new features
+      (such as finding matches using names, adding new celebrities)
+   - refactoring is a bitch but necessary sometimes
+
+
+Creating user and celeb caches
+   Determining what objects were important to save locally so they can be reused
+   Reducing the amount of time accessing database
+
+Keeping menus and features simple (thinking about whats really necessary -> THINK ABOUT DISPLAY)
+   especially with lots of data and features I could add this was important

@@ -448,7 +448,7 @@ public class DBService {
     System.out.println("for every planet in both charts");
     System.out.println();
     System.out.println("Use this menu to modify the importance placed on specific chart components or planets");
-    System.out.println("* For best results zodiac should be greater than mode and element");
+    System.out.println("* Warnings can be overridden by re-enterring the same value twice");
     while (true) {
       System.out.println("> getVars");
       System.out.println("> setVars");
@@ -464,7 +464,7 @@ public class DBService {
       if (command.equals("back")) {
         break;
       } else if (command.equalsIgnoreCase("setVars")) {
-        String setCommand = getSetString();
+        String setCommand = getSetString(q);
         String response = execute(q, setCommand);
         System.out.println(response);
       } else if (command.equalsIgnoreCase("getVars")) {
@@ -478,8 +478,10 @@ public class DBService {
     return "";
   }
 
-  private static String getSetString() throws IOException {
+  private static String getSetString(Query q) throws IOException {
     StringBuilder sb = new StringBuilder("");
+    boolean overrideValue = false;
+    double prevValue = 0; 
     while (true) {
       boolean validCommand = false;
       System.out.print("Enter planet, Component['zodiac', 'mode', 'element'] or 'house': ");
@@ -505,18 +507,44 @@ public class DBService {
     }
 
     while (true) {
-      System.out.print("Value: ");
+      System.out.print("Value: ");    
       BufferedReader r = new BufferedReader(new InputStreamReader(System.in));
-      String command = r.readLine();
+      String value = r.readLine();
 
-      if (command == null) {
+      if (value == null) {
         System.out.println("Please enter a value");
       } 
 
       try {
-        double d = Double.parseDouble(command);
-        sb.append(" " + d);
-        break;
+        String command = sb.substring(8, sb.length());
+        double d = Double.parseDouble(value);
+        
+        if (overrideValue && Double.compare(d, prevValue) == 0) {
+          // values can be overridden if they are entered twice;
+          sb.append(" " + d);
+          break;
+        } else if (d < 0) {
+          // variables shouldn't be negative 
+          System.out.println("Warning: Variables should not be negative");
+          overrideValue = true;
+          prevValue = d;
+          continue;
+        } else if ((command.equalsIgnoreCase("mode") || command.equalsIgnoreCase("element"))
+                    && q.lessThanZodiac(d)) {
+          System.out.println("Warning: Mode and Element variable should be less than Zodiac (Zodiac matches are made up of mode and element matches)");
+          overrideValue = true;
+          prevValue = d;
+          continue;
+        } else if (d < 1 && command.equalsIgnoreCase("house")) {
+          // having the same house should not reduce match value
+          System.out.println("Warning: House value shoud be greater than 1 (Otherwise value of match will be decreased if in the same house)");
+          overrideValue = true;
+          prevValue = d;
+          continue;
+        } else {
+          sb.append(" " + d);
+          break;
+        }
       } catch (NumberFormatException e) {
         System.out.println("Please enter a valid value");
       }
@@ -524,6 +552,7 @@ public class DBService {
     System.out.println(sb.toString());
     return sb.toString();
   }
+
 
 
 
